@@ -99,7 +99,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 // Data handler
 func dataHandler(w http.ResponseWriter, r *http.Request) {
 	// Parse the selected duration from the query parameters
-	duration, err := parseDurationFromQuery(r.URL.Query())
+	duration, err := parseDurationFromQuery(r.URL.Query().Get("duration"))
 	if err != nil {
 		http.Error(w, "Invalid duration", http.StatusBadRequest)
 		return
@@ -305,9 +305,8 @@ func ensureTableExists() error {
 }
 
 // Parse duration from query parameters
-func parseDurationFromQuery(queryParams map[string][]string) (time.Duration, error) {
-	durationStr, ok := queryParams["duration"]
-	if !ok || len(durationStr) == 0 {
+func parseDurationFromQuery(durationStr string) (time.Duration, error) {
+	if len(durationStr) == 0 {
 		return time.Hour, nil // Default duration to 1 hour if not specified
 	}
 

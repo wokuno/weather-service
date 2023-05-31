@@ -2,7 +2,7 @@
 <html>
 <head>
     <title>Weather Dashboard</title>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <h1>Weather Dashboard</h1>
@@ -44,92 +44,40 @@
 
         // Function to update the chart with new data
         const updateChart = (historicalData, latestData) => {
-            // Remove the oldest data point from the historical data
-            historicalData.shift();
+        const timestamps = historicalData.map(d => new Date(d.Timestamp));
+        const temperatures = historicalData.map(d => d.Temperature);
+        const pressures = historicalData.map(d => d.Pressure);
 
-            const timestamps = historicalData.map(d => new Date(d.Timestamp));
-            const temperatures = historicalData.map(d => d.Temperature);
-            const pressures = historicalData.map(d => d.Pressure);
+        timestamps.push(new Date(latestData.Timestamp));
+        temperatures.push(latestData.Temperature);
+        pressures.push(latestData.Pressure);
 
-            // Add the latest data point to the end of the arrays
-            timestamps.push(new Date(latestData.Timestamp));
-            temperatures.push(latestData.Temperature);
-            pressures.push(latestData.Pressure);
+        const ctx = document.getElementById('chart').getContext('2d');
 
-            // Chart dimensions
-            const width = 800;
-            const height = 400;
-            const margin = { top: 20, right: 20, bottom: 40, left: 40 };
-
-            // Create x and y scales
-            const xScale = d3.scaleTime()
-                .domain(d3.extent(timestamps))
-                .range([margin.left, width - margin.right]);
-
-            const yScale = d3.scaleLinear()
-                .domain([d3.min(temperatures), d3.max(pressures)])
-                .range([height - margin.bottom, margin.top]);
-
-            // Create temperature line generator
-            const temperatureLine = d3.line()
-                .x((d, i) => xScale(timestamps[i]))
-                .y(d => yScale(d))
-                .curve(d3.curveMonotoneX);
-
-            // Create pressure line generator
-            const pressureLine = d3.line()
-                .x((d, i) => xScale(timestamps[i]))
-                .y(d => yScale(d))
-                .curve(d3.curveMonotoneX);
-
-            // Select the chart SVG element
-            const svg = d3.select('#chart')
-                .attr('width', width)
-                .attr('height', height);
-
-            // Remove the previous chart elements
-            svg.selectAll('.line').remove();
-            svg.selectAll('.dot').remove();
-
-            // Append temperature line
-            svg.append('path')
-                .datum(temperatures)
-                .attr('class', 'line temperature-line')
-                .attr('d', temperatureLine)
-                .attr('fill', 'none')
-                .attr('stroke', 'red')
-                .attr('stroke-width', 2);
-
-            // Append pressure line
-            svg.append('path')
-                .datum(pressures)
-                .attr('class', 'line pressure-line')
-                .attr('d', pressureLine)
-                .attr('fill', 'none')
-                .attr('stroke', 'blue')
-                .attr('stroke-width', 2);
-
-            // Append temperature dots
-            svg.selectAll('.dot')
-                .data(temperatures)
-                .enter()
-                .append('circle')
-                .attr('class', 'dot temperature-dot')
-                .attr('cx', (d, i) => xScale(timestamps[i]))
-                .attr('cy', d => yScale(d))
-                .attr('r', 3)
-                .attr('fill', 'red');
-
-            // Append pressure dots
-            svg.selectAll('.dot')
-                .data(pressures)
-                .enter()
-                .append('circle')
-                .attr('class', 'dot pressure-dot')
-                .attr('cx', (d, i) => xScale(timestamps[i]))
-                .attr('cy', d => yScale(d))
-                .attr('r', 3)
-                .attr('fill', 'blue');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+            labels: timestamps,
+            datasets: [
+                {
+                label: 'Temperature',
+                data: temperatures,
+                borderColor: 'red',
+                fill: false,
+                },
+                {
+                label: 'Pressure',
+                data: pressures,
+                borderColor: 'blue',
+                fill: false,
+                },
+            ],
+            },
+            options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            },
+        });
         };
 
         // Fetch initial data and update the chart
