@@ -34,9 +34,9 @@
             await fetch('/data')
                 .then(response => response.json())
                 .then(data => {
-                    console.log(data.LatestData.Temperature);
-                    document.getElementById('temperature').textContent = data.LatestData.Temperature;
-                    document.getElementById('pressure').textContent = data.LatestData.Pressure;
+                    console.log(data.LatestData.temperature);
+                    document.getElementById('temperature').textContent = data.LatestData.temperature;
+                    document.getElementById('pressure').textContent = data.LatestData.pressure;
 
                     // Update the chart
                     updateChart(data.HistoricalData, data.LatestData);
