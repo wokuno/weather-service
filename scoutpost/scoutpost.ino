@@ -13,7 +13,7 @@ char ssid[32] = "";
 char password[64] = "";
 
 // Server URL to send sensor data
-const char* serverUrl = "http://your_server_ip:8080/sensor-data";
+const char* serverUrl = "http://weather.wokuno.com/sensor-data";
 
 WebServer server(80);
 Adafruit_BMP3XX bmp;

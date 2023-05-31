@@ -3,45 +3,46 @@
 # Generate a random password for PostgreSQL
 POSTGRES_PASSWORD=$(openssl rand -base64 12)
 
-# Create the user wokuno
-useradd -m -s /bin/bash wokuno
-usermod -aG sudo wokuno
+# Create the user weather
+useradd -m -s /bin/bash weather
+usermod -aG wheel weather
 
-# Copy authorized_keys from root to wokuno's home directory
-cp /root/.ssh/authorized_keys /home/wokuno/.ssh/
-chown wokuno:wokuno /home/wokuno/.ssh/authorized_keys
+# Copy authorized_keys from root to weather's home directory
+cp /root/.ssh/authorized_keys /home/weather/.ssh/
+chown weather:weather /home/weather/.ssh/authorized_keys
 
 # Update the system and install dependencies
-apt-get update
-apt-get upgrade -y
-apt-get install -y apt-transport-https ca-certificates curl software-properties-common
+dnf update -y
+dnf install -y curl wget git
 
 # Install Podman
-curl -sSL https://get.docker.com | sh
-curl -sSL https://github.com/containers/podman/raw/main/installers/debian/podman.sh | sh
+dnf -y install podman
+systemctl start podman
+systemctl enable podman
 
-# Configure Podman to run as non-root user
-groupadd podman
-usermod -aG podman wokuno
+# Install Podman Compose
+sudo dnf install -y podman-compose
 
 # Set up Caddy and PostgreSQL containers (replace with your desired configuration)
 mkdir -p /srv/caddy
 mkdir -p /srv/pgdata
 
-# Copy the Caddyfile and Docker Compose file from GitHub repository
+# Clone the GitHub repository
 git clone https://github.com/wokuno/weather-service /tmp/weather-service
+
+# Copy the Caddyfile and Docker Compose file from the repository
 cp /tmp/weather-service/Caddyfile /srv/
 cp /tmp/weather-service/docker-compose.yaml /srv/
 
 # Change ownership of the directories
-chown -R wokuno:wokuno /srv/caddy
-chown -R wokuno:wokuno /srv/pgdata
+chown -R weather:weather /srv/caddy
+chown -R weather:weather /srv/pgdata
 
 # Set the environment variables
-echo "export POSTGRES_USER=weather" >> /home/wokuno/.bashrc
-echo "export POSTGRES_PASSWORD=$POSTGRES_PASSWORD" >> /home/wokuno/.bashrc
-echo "export POSTGRES_DB=weatherdb" >> /home/wokuno/.bashrc
+echo "export POSTGRES_USER=weather" >> /home/weather/.bashrc
+echo "export POSTGRES_PASSWORD=$POSTGRES_PASSWORD" >> /home/weather/.bashrc
+echo "export POSTGRES_DB=weatherdb" >> /home/weather/.bashrc
 
-# Start the containers using Podman and Docker Compose
+# Start the containers using Podman Compose
 cd /srv
-sudo -u wokuno podman-compose up -d
+sudo -u weather podman-compose up -d
