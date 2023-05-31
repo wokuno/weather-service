@@ -3,7 +3,7 @@
 #include <bmp3_defs.h>
 
 #include <WiFi.h>
-#include <WiFiClient.h>
+#include <WiFiClientSecure.h>
 #include <WebServer.h>
 #include <SPIFFS.h> // Include the SPIFFS library
 #include <ArduinoJson.h> // Include the ArduinoJson library
@@ -13,7 +13,8 @@ char ssid[32] = "";
 char password[64] = "";
 
 // Server URL to send sensor data
-const char* serverUrl = "http://weather.wokuno.com/sensor-data";
+const char* serverUrl = "weather.wokuno.com";
+const int serverPort = 443;
 
 WebServer server(80);
 Adafruit_BMP3XX bmp;
@@ -100,7 +101,7 @@ void loop() {
       // blinkLed(0, 500, 500);
     }
 
-//    Serial.println(temperature);
+    //    Serial.println(temperature);
 
     delay(5000);
   } else {
@@ -190,7 +191,10 @@ void saveWiFiCredentials() {
 }
 
 bool sendDataToServer(float temperature, float pressure) {
-  WiFiClient client;
+  WiFiClientSecure client;
+
+  // Disable certificate verification (INSECURE)
+  client.setInsecure();
 
   // Construct the sensor data JSON payload
   DynamicJsonDocument payload(256);
@@ -201,18 +205,13 @@ bool sendDataToServer(float temperature, float pressure) {
   String payloadStr;
   serializeJson(payload, payloadStr);
   Serial.println(payloadStr);
-  
-  if (client.connect(serverUrl, 80)) {
+
+  if (client.connect(serverUrl, serverPort)) {
     Serial.println("Connected to server");
 
-    // Extract the hostname from serverUrl
-    String hostname = serverUrl;
-    hostname.remove(0, 7); // Remove "http://"
-    hostname = hostname.substring(0, hostname.indexOf('/'));
-
-    client.print("POST /sensor-data HTTP/1.1\r\n");
+    client.print("POST /data HTTP/1.1\r\n");
     client.print("Host: ");
-    client.println(hostname);
+    client.println(serverUrl);
     client.println("Content-Type: application/json");
     client.println("Connection: close");
     client.print("Content-Length: ");
@@ -224,6 +223,22 @@ bool sendDataToServer(float temperature, float pressure) {
       if (client.available()) {
         String line = client.readStringUntil('\n');
         Serial.println(line);
+
+        // Check for a 308 redirect
+        if (line.startsWith("HTTP/1.1 308")) {
+          // Extract the new location from the redirect response
+          while (line != "\r") {
+            line = client.readStringUntil('\n');
+            if (line.startsWith("Location: ")) {
+              // Extract the hostname from the new location
+              String newLocation = line.substring(10);
+              newLocation.trim();
+              serverUrl = newLocation.c_str(); // Convert to const char*
+              break;
+            }
+          }
+        }
+
         parseUUIDFromResponse(line); // Parse the UUID from the response
       }
     }
@@ -295,8 +310,8 @@ void parseUUIDFromResponse(const String& response) {
   DynamicJsonDocument json(256);
   deserializeJson(json, response);
 
-  if (json.containsKey("uuid")) {
-    String newUUID = json["uuid"].as<String>();
+  if (json.containsKey("id")) {
+    String newUUID = json["id"].as<String>();
     if (newUUID != uuid) {
       uuid = newUUID;
       saveUUID(uuid); // Save the new UUID

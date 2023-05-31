@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -251,6 +252,9 @@ func parseDurationFromQuery(queryParams map[string][]string) (time.Duration, err
 	if durationStr == "" {
 		return time.Hour, nil // Default duration to 1 hour if not specified
 	}
+
+	// Remove "h" suffix if present
+	durationStr = strings.TrimSuffix(durationStr, "h")
 
 	durationInt, err := strconv.Atoi(durationStr)
 	if err != nil {
