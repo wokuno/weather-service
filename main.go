@@ -57,7 +57,7 @@ func main() {
 
 	// Start the HTTP server
 	log.Println("Server listening on port 8080...")
-	err := http.ListenAndServe(":8080", addCORSHeaders(router))
+	err = http.ListenAndServe(":8080", addCORSHeaders(router))
 	if err != nil {
 		log.Fatal("Failed to start the server:", err)
 	}
