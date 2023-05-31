@@ -139,18 +139,18 @@ func dataHandler(w http.ResponseWriter, r *http.Request) {
 		HistoricalData: historicalData,
 	}
 
-	// Convert data to JSON
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		http.Error(w, "Failed to marshal JSON data", http.StatusInternalServerError)
-		return
-	}
+	// // Convert data to JSON
+	// jsonData, err := json.Marshal(data)
+	// if err != nil {
+	// 	http.Error(w, "Failed to marshal JSON data", http.StatusInternalServerError)
+	// 	return
+	// }
 
 	// Set response headers
 	w.Header().Set("Content-Type", "application/json")
 
 	// Write the JSON data to the response
-	_, err = w.Write(jsonData)
+	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		http.Error(w, "Failed to write JSON response", http.StatusInternalServerError)
 		return
@@ -221,9 +221,9 @@ func getLatestWeatherData() (WeatherData, error) {
 	err := db.QueryRow(context.Background(), "SELECT id, temperature, pressure, timestamp FROM weather_data ORDER BY timestamp DESC LIMIT 1").Scan(&data.ID, &data.Temperature, &data.Pressure, &data.Timestamp)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return WeatherData{}, fmt.Errorf("No weather data available")
+			return WeatherData{}, fmt.Errorf("no weather data available")
 		}
-		return WeatherData{}, fmt.Errorf("Failed to fetch latest weather data: %v", err)
+		return WeatherData{}, fmt.Errorf("failed to fetch latest weather data: %v", err)
 	}
 	return data, nil
 }
