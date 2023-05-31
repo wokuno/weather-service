@@ -34,7 +34,7 @@ var templates *template.Template
 func main() {
 	// Connect to the PostgreSQL database
 	var err error
-	db, err = pgx.Connect(context.Background(), fmt.Sprintf("postgresql://weather:%s@localhost:5432/weatherdb?sslmode=disable", os.Getenv("POSTGRES_PASSWORD")))
+	db, err = pgx.Connect(context.Background(), fmt.Sprintf("postgresql://weather:%s@postgres:5432/weatherdb?sslmode=disable", os.Getenv("POSTGRES_PASSWORD")))
 	if err != nil {
 		log.Fatal("Failed to connect to the database:", err)
 	}

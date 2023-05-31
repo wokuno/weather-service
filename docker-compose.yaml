@@ -24,6 +24,8 @@ services:
       - POSTGRES_USER=${POSTGRES_USER}  # Use the environment variable for PostgreSQL username
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}  # Use the environment variable for PostgreSQL password
       - POSTGRES_DB=${POSTGRES_DB}  # Use the environment variable for PostgreSQL database name
+    depends_on:
+      - postgres
 
   postgres:
     container_name: postgres

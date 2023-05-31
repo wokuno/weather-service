@@ -40,8 +40,6 @@ cp /tmp/weather-service/Caddyfile /srv/
 cp /tmp/weather-service/docker-compose.yaml /srv/
 cp /tmp/weather-service/Dockerfile /srv/
 
-
-
 # Change ownership of the directories
 chown -R weather:weather /srv/caddy
 chown -R weather:weather /srv/pgdata
