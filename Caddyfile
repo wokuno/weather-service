@@ -1,0 +1,3 @@
+weather.wokuno.com {
+    reverse_proxy weather-service:8080
+}

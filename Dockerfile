@@ -1,23 +1,25 @@
-# Stage 1: Build the Go application
-FROM golang:latest AS builder
+# Use the official Golang image as the base image
+FROM golang:latest
 
+# Set the working directory inside the container
 WORKDIR /app
 
-COPY go.mod go.sum ./
-RUN go mod download
+# Copy the source code files from the host to the container
+COPY . /app
 
-COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o app .
+# Download the files from the GitHub repository
+RUN apt-get update && apt-get install -y git && \
+    git clone https://github.com/wokuno/weather-service.git /tmp/weather-service && \
+    cp -R /tmp/weather-service/* /app/ && \
+    rm -rf /tmp/weather-service && \
+    apt-get remove -y git && apt-get autoremove -y && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Stage 2: Create a lightweight production image
-FROM alpine:latest
+# Build the Go application
+RUN go build -o main .
 
-RUN apk --no-cache add ca-certificates
-
-WORKDIR /root/
-
-COPY --from=builder /app/app .
-
+# Expose the port that the Go application listens on
 EXPOSE 8080
 
-CMD ["./app"]
+# Run the Go application when the container starts
+CMD ["./main"]

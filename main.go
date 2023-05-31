@@ -8,6 +8,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -33,7 +34,7 @@ var templates *template.Template
 func main() {
 	// Connect to the PostgreSQL database
 	var err error
-	db, err = pgx.Connect(context.Background(), "postgresql://weather:geU4Sh67maJr7fHW7DE@localhost:5432/weatherdb?sslmode=disable")
+	db, err = pgx.Connect(context.Background(), fmt.Sprintf("postgresql://weather:%s@localhost:5432/weatherdb?sslmode=disable", os.Getenv("POSTGRES_PASSWORD")))
 	if err != nil {
 		log.Fatal("Failed to connect to the database:", err)
 	}
@@ -143,6 +144,30 @@ func submitDataHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		data.ID = newUUID
+
+		// Send the new UUID as JSON response
+		response := struct {
+			ID string `json:"id"`
+		}{
+			ID: newUUID,
+		}
+
+		// Convert response to JSON
+		jsonResponse, err := json.Marshal(response)
+		if err != nil {
+			http.Error(w, "Failed to marshal JSON response", http.StatusInternalServerError)
+			return
+		}
+
+		// Set response headers
+		w.Header().Set("Content-Type", "application/json")
+
+		// Write the JSON response to the client
+		_, err = w.Write(jsonResponse)
+		if err != nil {
+			http.Error(w, "Failed to write JSON response", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	// Insert the weather data into the database

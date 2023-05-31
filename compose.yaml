@@ -5,34 +5,39 @@ services:
     image: "wemakeservices/caddy-gen:latest"
     restart: always
     volumes:
-      - /var/run:/var/run:ro
-      - ./caddy-info:/data/caddy
+      - /var/run/docker.sock:/tmp/docker.sock:ro  # Mount the Docker socket
+      - ./caddy-info:/data/caddy  # Mount a volume for certificate backup
     ports:
-      - "80:80"
-      - "443:443"
+      - "80:80"  # Expose port 80 for HTTP
+      - "443:443"  # Expose port 443 for HTTPS
     depends_on:
-      - go-service
+      - weather-service
 
-  go-service:
+  weather-service:
     build:
       context: .
       dockerfile: Dockerfile
-    image: go-service-image
+    image: weather-service  # Updated image name
     labels:
-      - "virtual.host=weather.wokuno.com"
-      - "virtual.port=8080"
-      - "virtual.tls-email=admin@weather.wokuno.com"
+      - "virtual.host=weather.wokuno.com"  # Updated domain
+      - "virtual.alias=www.weather.wokuno.com"  # Updated domain alias (optional)
+      - "virtual.port=8080"  # Exposed port of your Go service container
+      - "virtual.tls-email=will@plover.io"  # Email address for TLS certificates
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}  # Use the environment variable for PostgreSQL username
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}  # Use the environment variable for PostgreSQL password
+      - POSTGRES_DB=${POSTGRES_DB}  # Use the environment variable for PostgreSQL database name
 
   postgres:
     container_name: postgres
     image: postgres:latest
     restart: always
     environment:
-      - POSTGRES_USER=weather
-      - POSTGRES_PASSWORD=geU4Sh67maJr7fHW7DE
-      - POSTGRES_DB=weatherdb
+      - POSTGRES_USER=${POSTGRES_USER}  # Use the environment variable for PostgreSQL username
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}  # Use the environment variable for PostgreSQL password
+      - POSTGRES_DB=${POSTGRES_DB}  # Use the environment variable for PostgreSQL database name
     ports:
-      - "5432:5432"
+      - "5432:5432"  # Expose port 5432 for PostgreSQL
     volumes:
-      - ./pgdata:/var/lib/postgresql/data
-    command: ["postgres", "-c", "shared_preload_libraries=uuid-ossp"]
+      - ./pgdata:/var/lib/postgresql/data  # Mount a volume for persistent data storage
+    command: ["postgres", "-c", "shared_preload_libraries=uuid-ossp"]  # Enable uuid-ossp extension
