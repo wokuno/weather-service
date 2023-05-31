@@ -8,8 +8,9 @@ useradd -m -s /bin/bash weather
 usermod -aG wheel weather
 
 # Copy authorized_keys from root to weather's home directory
+mkdir /home/weather/.ssh
 cp /root/.ssh/authorized_keys /home/weather/.ssh/
-chown weather:weather /home/weather/.ssh/authorized_keys
+chown weather:weather -R /home/weather/.ssh/
 
 # Update the system and install dependencies
 dnf update -y
@@ -30,9 +31,16 @@ mkdir -p /srv/pgdata
 # Clone the GitHub repository
 git clone https://github.com/wokuno/weather-service /tmp/weather-service
 
+# Build the weather-service image using Podman
+cd /tmp/weather-service
+sudo -u weather podman build -t weather-service .
+
 # Copy the Caddyfile and Docker Compose file from the repository
 cp /tmp/weather-service/Caddyfile /srv/
 cp /tmp/weather-service/docker-compose.yaml /srv/
+cp /tmp/weather-service/Dockerfile /srv/
+
+
 
 # Change ownership of the directories
 chown -R weather:weather /srv/caddy

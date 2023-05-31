@@ -1,7 +1,6 @@
 version: "3"
 services:
   caddy-gen:
-    container_name: caddy-gen
     image: "wemakeservices/caddy-gen:latest"
     restart: always
     volumes:
@@ -17,7 +16,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: weather-service  # Updated image name
+    image: weather-service:latest  # Updated image name
     labels:
       - "virtual.host=weather.wokuno.com"  # Updated domain
       - "virtual.alias=www.weather.wokuno.com"  # Updated domain alias (optional)
