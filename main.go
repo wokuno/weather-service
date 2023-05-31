@@ -27,27 +27,10 @@ type WeatherData struct {
 	Timestamp   time.Time `json:"timestamp"`
 }
 
-// Database connection pool
-var db *pgx.Conn
-
 // HTML templates
 var templates *template.Template
 
 func main() {
-	// Connect to the PostgreSQL database
-	var err error
-	db, err = pgx.Connect(context.Background(), fmt.Sprintf("postgresql://weather:%s@postgres:5432/weatherdb?sslmode=disable", os.Getenv("POSTGRES_PASSWORD")))
-	if err != nil {
-		log.Fatal("Failed to connect to the database:", err)
-	}
-	defer db.Close(context.Background())
-
-	// Ensure the weather_data table exists
-	err = ensureTableExists()
-	if err != nil {
-		log.Fatal("Failed to ensure table exists:", err)
-	}
-
 	// Prepare HTML templates
 	templates = template.Must(template.ParseGlob("templates/*.html"))
 
@@ -61,11 +44,10 @@ func main() {
 
 	// Start the HTTP server
 	log.Println("Server listening on port 8080...")
-	err = http.ListenAndServe(":8080", addCORSHeaders(router))
+	err := http.ListenAndServe(":8080", addCORSHeaders(router))
 	if err != nil {
 		log.Fatal("Failed to start the server:", err)
 	}
-
 }
 
 // Middleware to add CORS headers
@@ -224,8 +206,14 @@ func submitDataHandler(w http.ResponseWriter, r *http.Request) {
 
 // Fetch the latest weather data
 func getLatestWeatherData() (WeatherData, error) {
+	conn, err := pgx.Connect(context.Background(), fmt.Sprintf("postgresql://weather:%s@postgres:5432/weatherdb?sslmode=disable", os.Getenv("POSTGRES_PASSWORD")))
+	if err != nil {
+		return WeatherData{}, fmt.Errorf("Failed to connect to the database: %v", err)
+	}
+	defer conn.Close(context.Background())
+
 	var data WeatherData
-	err := db.QueryRow(context.Background(), "SELECT id, device_id, temperature, pressure, timestamp FROM weather_data ORDER BY timestamp DESC LIMIT 1").Scan(&data.ID, &data.DeviceID, &data.Temperature, &data.Pressure, &data.Timestamp)
+	err = conn.QueryRow(context.Background(), "SELECT id, device_id, temperature, pressure, timestamp FROM weather_data ORDER BY timestamp DESC LIMIT 1").Scan(&data.ID, &data.DeviceID, &data.Temperature, &data.Pressure, &data.Timestamp)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return WeatherData{}, fmt.Errorf("no weather data available")
@@ -240,7 +228,13 @@ func getHistoricalWeatherData(duration time.Duration, limit int) ([]WeatherData,
 	// Calculate the start time based on the duration
 	startTime := time.Now().Add(-duration)
 
-	rows, err := db.Query(context.Background(), "SELECT id, device_id, temperature, pressure, timestamp FROM weather_data WHERE timestamp >= $1 ORDER BY timestamp ASC", startTime)
+	conn, err := pgx.Connect(context.Background(), fmt.Sprintf("postgresql://weather:%s@postgres:5432/weatherdb?sslmode=disable", os.Getenv("POSTGRES_PASSWORD")))
+	if err != nil {
+		return []WeatherData{}, fmt.Errorf("Failed to connect to the database: %v", err)
+	}
+	defer conn.Close(context.Background())
+
+	rows, err := conn.Query(context.Background(), "SELECT id, device_id, temperature, pressure, timestamp FROM weather_data WHERE timestamp >= $1 ORDER BY timestamp ASC", startTime)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return []WeatherData{}, fmt.Errorf("no historical weather data available")
@@ -286,26 +280,15 @@ func getHistoricalWeatherData(duration time.Duration, limit int) ([]WeatherData,
 
 // Insert weather data into the database
 func insertWeatherData(data WeatherData) error {
-	_, err := db.Exec(context.Background(), "INSERT INTO weather_data (device_id, temperature, pressure, timestamp) VALUES ($1, $2, $3, $4)", data.DeviceID, data.Temperature, data.Pressure, data.Timestamp)
+	conn, err := pgx.Connect(context.Background(), fmt.Sprintf("postgresql://weather:%s@postgres:5432/weatherdb?sslmode=disable", os.Getenv("POSTGRES_PASSWORD")))
+	if err != nil {
+		return fmt.Errorf("Failed to connect to the database: %v", err)
+	}
+	defer conn.Close(context.Background())
+
+	_, err = conn.Exec(context.Background(), "INSERT INTO weather_data (device_id, temperature, pressure, timestamp) VALUES ($1, $2, $3, $4)", data.DeviceID, data.Temperature, data.Pressure, data.Timestamp)
 	if err != nil {
 		return fmt.Errorf("Failed to insert weather data into the database: %v", err)
-	}
-	return nil
-}
-
-// Ensure the weather_data table exists
-func ensureTableExists() error {
-	_, err := db.Exec(context.Background(), `
-		CREATE TABLE IF NOT EXISTS weather_data (
-			id SERIAL PRIMARY KEY,
-			device_id UUID,
-			temperature NUMERIC,
-			pressure NUMERIC,
-			timestamp TIMESTAMP
-		)
-	`)
-	if err != nil {
-		return fmt.Errorf("Failed to create weather_data table: %v", err)
 	}
 	return nil
 }
@@ -343,6 +326,12 @@ func parseDurationFromQuery(durationStr string) (time.Duration, error) {
 
 // Generate a unique Device ID that doesn't exist in the database
 func generateUniqueDeviceID() (string, error) {
+	conn, err := pgx.Connect(context.Background(), fmt.Sprintf("postgresql://weather:%s@postgres:5432/weatherdb?sslmode=disable", os.Getenv("POSTGRES_PASSWORD")))
+	if err != nil {
+		return "", fmt.Errorf("Failed to connect to the database: %v", err)
+	}
+	defer conn.Close(context.Background())
+
 	for {
 		// Generate a new UUID
 		newUUID, err := uuid.NewV4()
@@ -351,16 +340,16 @@ func generateUniqueDeviceID() (string, error) {
 		}
 
 		// Check if the Device ID already exists in the database
-		if !deviceIDExists(newUUID.String()) {
+		if !deviceIDExists(conn, newUUID.String()) {
 			return newUUID.String(), nil
 		}
 	}
 }
 
 // Check if the Device ID exists in the database
-func deviceIDExists(deviceID string) bool {
+func deviceIDExists(conn *pgx.Conn, deviceID string) bool {
 	var exists bool
-	err := db.QueryRow(context.Background(), "SELECT EXISTS(SELECT 1 FROM weather_data WHERE device_id = $1)", deviceID).Scan(&exists)
+	err := conn.QueryRow(context.Background(), "SELECT EXISTS(SELECT 1 FROM weather_data WHERE device_id = $1)", deviceID).Scan(&exists)
 	if err != nil {
 		log.Printf("Failed to check Device ID existence: %v", err)
 		return false
