@@ -2,31 +2,40 @@
 <html>
 <head>
     <title>Weather Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://d3js.org/d3.v3.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
 </head>
-<body>
-    <h1>Weather Dashboard</h1>
+<body class="bg-gray-800 text-white">
+    <div class="container mx-auto p-10">
+        <h1 class="text-4xl font-bold mb-4">Weather Dashboard</h1>
 
-    <h2>Latest Weather Data</h2>
-    <p>Temperature: <span id="temperature"></span></p>
-    <p>Pressure: <span id="pressure"></span></p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            <div>
+                <h2 class="text-2xl font-semibold mb-2">Latest Weather Data</h2>
+                <p class="mb-1">Temperature: <span id="temperature" class="font-bold"></span></p>
+                <p>Pressure: <span id="pressure" class="font-bold"></span></p>
+            </div>
 
-    <h2>Historical Weather Data</h2>
-    <form method="GET" action="/">
-        <label for="duration">Select Duration:</label>
-        <select name="duration" id="duration">
-            <option value="1h" {{ if eq .Duration "1h" }}selected{{ end }}>Past 1 Hour</option>
-            <option value="12h" {{ if eq .Duration "12h" }}selected{{ end }}>Past 12 Hours</option>
-            <option value="24h" {{ if eq .Duration "24h" }}selected{{ end }}>Past 24 Hours</option>
-            <option value="72h" {{ if eq .Duration "72h" }}selected{{ end }}>Past 3 Days</option>
-            <option value="120h" {{ if eq .Duration "120h" }}selected{{ end }}>Past 5 Days</option>
-            <option value="168h" {{ if eq .Duration "168h" }}selected{{ end }}>Past 1 Week</option>
-        </select>
-        <input type="submit" value="Update">
-    </form>
+            <div>
+                <h2 class="text-2xl font-semibold mb-2">Historical Weather Data</h2>
+                <form method="GET" action="/" class="flex items-center">
+                    <label for="duration" class="mr-2">Select Duration:</label>
+                    <select name="duration" id="duration" class="bg-gray-700 text-white rounded p-1">
+                        <option value="1h" {{ if eq .Duration "1h" }}selected{{ end }}>Past 1 Hour</option>
+                        <option value="12h" {{ if eq .Duration "12h" }}selected{{ end }}>Past 12 Hours</option>
+                        <option value="24h" {{ if eq .Duration "24h" }}selected{{ end }}>Past 24 Hours</option>
+                        <option value="72h" {{ if eq .Duration "72h" }}selected{{ end }}>Past 3 Days</option>
+                        <option value="120h" {{ if eq .Duration "120h" }}selected{{ end }}>Past 5 Days</option>
+                        <option value="168h" {{ if eq .Duration "168h" }}selected{{ end }}>Past 1 Week</option>
+                    </select>
+                    <input type="submit" value="Update" class="ml-2 px-4 py-1 bg-blue-500 hover:bg-blue-700 rounded text-white">
+                </form>
+            </div>
+        </div>
 
-    <div id="chart"></div>
+        <div id="chart" class="w-full h-64 bg-gray-700 rounded p-4"></div>
+    </div>
 
     <script>
         // Function to update the latest weather data
@@ -34,67 +43,57 @@
             await fetch('/data')
                 .then(response => response.json())
                 .then(data => {
-                    console.log(data.LatestData.temperature);
                     document.getElementById('temperature').textContent = data.LatestData.temperature;
                     document.getElementById('pressure').textContent = data.LatestData.pressure;
-
+    
                     // Update the chart
                     updateChart(data.HistoricalData, data.LatestData);
                 });
         }
-
+    
         const updateChart = (historicalData, latestData) => {
-            const chartData = [];
-            const chartLabels = [];
-
-            const dateFormat = 'YYYY-MM-DD HH:mm:ss';
-            historicalData.forEach((data) => {
-                const timestamp = moment(data.Timestamp).utc().format(dateFormat);
-                chartData.push({ x: new Date(timestamp), y: data.Temperature });
-                chartLabels.push(timestamp);
-            });
-
-            const latestTimestamp = moment(latestData.Timestamp).utc().format(dateFormat);
-            chartData.push({ x: new Date(latestTimestamp), y: latestData.Temperature });
-            chartLabels.push(latestTimestamp);
-
-            const margin = { top: 20, right: 40, bottom: 30, left: 40 };
-            const width = 500 - margin.right - margin.left;
-            const height = 160 - margin.top - margin.bottom;
-
-            const xScale = d3.time.scale()
-                .domain(d3.extent(chartData, d => d.x))
-                .range([0, width]);
-
-            const yScale = d3.scale.linear()
-                .domain(d3.extent(chartData, d => d.y))
-                .range([height, 0]);
-
-            const line = d3.svg.line()
-                .x(d => xScale(d.x))
-                .y(d => yScale(d.y))
-                .interpolate("basis");
-
-            const svg = d3.select("#chart")
-                .append("svg")
-                .attr("width", width + margin.left + margin.right)
-                .attr("height", height + margin.top + margin.bottom)
-                .append("g")
-                .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
+            // Prepare the data
+            const chartData = historicalData.concat([latestData]).map(data => ({
+                time: new Date(data.Timestamp),
+                temperature: data.Temperature
+            }));
+    
+            // Set up the scales
+            const xScale = d3.scaleUtc().domain(d3.extent(chartData, d => d.time)).range([0, width]);
+            const yScale = d3.scaleLinear().domain(d3.extent(chartData, d => d.temperature)).range([height, 0]);
+    
+            // Set up the line generator
+            const line = d3.line()
+                .x(d => xScale(d.time))
+                .y(d => yScale(d.temperature));
+    
+            // Set up the color scale
+            const colorScale = d3.scaleLinear()
+                .domain([d3.min(chartData, d => d.temperature), d3.mean(chartData, d => d.temperature), d3.max(chartData, d => d.temperature)])
+                .range(['blue', 'green', 'red']);
+    
+            // Generate the SVG
+            const svg = d3.select("#chart").append("svg")
+                .attr("width", width)
+                .attr("height", height);
+    
+            // Generate the path
             svg.append("path")
                 .datum(chartData)
-                .attr("class", "line")
+                .attr("fill", "none")
+                .attr("stroke", d => colorScale(d.temperature))
+                .attr("stroke-width", 2)
                 .attr("d", line);
         };
-
+    
         // Fetch initial data and update the chart
         updateLatestData();
-
+    
         // Update latest data and chart periodically
         setInterval(() => {
             updateLatestData();
         }, 5000);
     </script>
+    
 </body>
 </html>
