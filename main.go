@@ -243,7 +243,6 @@ func getHistoricalWeatherData(duration time.Duration, limit int) ([]WeatherData,
 	defer rows.Close()
 
 	var data []WeatherData
-	totalRows := 0
 	for rows.Next() {
 		var d WeatherData
 		err := rows.Scan(&d.ID, &d.Temperature, &d.Pressure, &d.Timestamp)
@@ -251,32 +250,31 @@ func getHistoricalWeatherData(duration time.Duration, limit int) ([]WeatherData,
 			return []WeatherData{}, fmt.Errorf("failed to fetch historical weather data row: %v", err)
 		}
 		data = append(data, d)
-		totalRows++
 	}
 
-	if totalRows <= limit {
-		return data, nil
+	if len(data) > limit {
+		// Calculate the step size to evenly distribute the data points
+		stepSize := float64(len(data)-1) / float64(limit-1)
+
+		// Create a new slice to store the limited data points
+		limitedData := make([]WeatherData, 0, limit)
+
+		// Append the first data point
+		limitedData = append(limitedData, data[0])
+
+		// Iterate through the remaining data points based on the step size
+		for i := 1; i < limit-1; i++ {
+			index := int(float64(i) * stepSize)
+			limitedData = append(limitedData, data[index])
+		}
+
+		// Append the last data point
+		limitedData = append(limitedData, data[len(data)-1])
+
+		return limitedData, nil
 	}
 
-	// Calculate the step size to evenly distribute the data points
-	stepSize := float64(totalRows-1) / float64(limit-1)
-
-	// Create a new slice to store the limited data points
-	limitedData := make([]WeatherData, 0, limit)
-
-	// Append the first data point
-	limitedData = append(limitedData, data[0])
-
-	// Iterate through the remaining data points based on the step size
-	for i := 1; i < limit-1; i++ {
-		index := int(float64(i) * stepSize)
-		limitedData = append(limitedData, data[index])
-	}
-
-	// Append the last data point
-	limitedData = append(limitedData, data[totalRows-1])
-
-	return limitedData, nil
+	return data, nil
 }
 
 // Insert weather data into the database
