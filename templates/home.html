@@ -34,7 +34,7 @@
             await fetch('/data')
                 .then(response => response.json())
                 .then(data => {
-                    console.log(data.LatestData);
+                    console.log(data.LatestData.Temperature);
                     document.getElementById('temperature').textContent = data.LatestData.Temperature;
                     document.getElementById('pressure').textContent = data.LatestData.Pressure;
 
