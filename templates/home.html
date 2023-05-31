@@ -30,8 +30,8 @@
 
     <script>
         // Function to update the latest weather data
-        const updateLatestData = () => {
-            fetch('/data')
+        async function updateLatestData() {
+            await fetch('/data')
                 .then(response => response.json())
                 .then(data => {
                     console.log(data["LatestData"]["Temperature"]);
@@ -41,7 +41,7 @@
                     // Update the chart
                     updateChart(data.HistoricalData, data.LatestData);
                 });
-        };
+        }
 
         const updateChart = (historicalData, latestData) => {
             const chartData = [];
