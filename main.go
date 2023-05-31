@@ -310,8 +310,7 @@ func parseDurationFromQuery(durationStr string) (time.Duration, error) {
 		return time.Hour, nil // Default duration to 1 hour if not specified
 	}
 
-	durationValue := durationStr[0]
-	durationVal := strings.TrimSuffix(durationValue, "h")
+	durationVal := strings.TrimSuffix(durationStr, "h")
 
 	durationInt, err := strconv.Atoi(durationVal)
 	if err != nil {
