@@ -97,6 +97,10 @@
             .call(d3.axisLeft(yScale));
         }
 
+        // Set up the scales
+        const xScale = d3.scaleTime().range([0, width]);
+        const yScale = d3.scaleLinear().range([height, 0]);
+
         // Set up the line generator
         const line = d3.line()
             .x(d => xScale(d.time))
@@ -108,7 +112,7 @@
         const maxTemperature = Math.max(...temperatures, 90);
         const temperatureRange = [minTemperature, maxTemperature];
 
-        // Update the scales
+        // Update the scales' domains
         xScale.domain(d3.extent(chartData, d => d.time));
         yScale.domain(temperatureRange);
 
@@ -132,10 +136,12 @@
             .attr("stroke-width", 2);
         }
 
+        // Update the path's data and 'd' attribute
         path.datum(chartData)
             .transition()
             .attr("d", line);
         };
+
 
     
         // Fetch initial data and update the chart
