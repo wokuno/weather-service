@@ -44,28 +44,65 @@
         };
 
         const updateChart = (historicalData, latestData) => {
-        // Clear previous chart elements
-        chart.data.labels = [];
-        chart.data.datasets.forEach((dataset) => {
-            dataset.data = [];
-        });
-
-        // Update chart data
+        const chartData = [];
+        const chartLabels = [];
+        
         const dateFormat = 'YYYY-MM-DD HH:mm:ss';
         historicalData.forEach((data) => {
             const timestamp = moment(data.Timestamp).utc().format(dateFormat);
-            chart.data.labels.push(timestamp);
-            chart.data.datasets[0].data.push(data.Temperature);
-            chart.data.datasets[1].data.push(data.Pressure);
+            chartData.push({ x: timestamp, y: data.Temperature });
+            chartLabels.push(timestamp);
         });
+        
         const latestTimestamp = moment(latestData.Timestamp).utc().format(dateFormat);
-        chart.data.labels.push(latestTimestamp);
-        chart.data.datasets[0].data.push(latestData.Temperature);
-        chart.data.datasets[1].data.push(latestData.Pressure);
-
-        // Update chart
-        chart.update();
+        chartData.push({ x: latestTimestamp, y: latestData.Temperature });
+        chartLabels.push(latestTimestamp);
+        
+        const ctx = document.getElementById('chart').getContext('2d');
+        
+        if (window.chart) {
+            window.chart.destroy();
+        }
+        
+        window.chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+            labels: chartLabels,
+            datasets: [{
+                label: 'Temperature',
+                data: chartData,
+                borderColor: 'red',
+                fill: false
+            }]
+            },
+            options: {
+            scales: {
+                x: {
+                type: 'time',
+                time: {
+                    displayFormats: {
+                    second: 'HH:mm:ss',
+                    minute: 'HH:mm',
+                    hour: 'MMM D, HH:mm',
+                    day: 'MMM D',
+                    week: 'll',
+                    month: 'MMM YYYY',
+                    quarter: '[Q]Q - YYYY',
+                    year: 'YYYY'
+                    }
+                },
+                ticks: {
+                    source: 'auto'
+                }
+                },
+                y: {
+                beginAtZero: true
+                }
+            }
+            }
+        });
         };
+
 
         // Fetch initial data and update the chart
         updateLatestData();
