@@ -3,6 +3,7 @@ services:
   caddy-gen:
     image: "wemakeservices/caddy-gen:latest"
     restart: always
+    privileged: true
     volumes:
       - /run/podman/podman.sock:/tmp/docker.sock:Z  # Mount the Docker socket
       - /srv/caddy-info:/data/caddy  # Mount a volume for certificate backup
