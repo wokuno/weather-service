@@ -57,6 +57,10 @@
                 time: new Date(data.Timestamp),
                 temperature: data.Temperature
             }));
+
+            // Set up the scales
+            const width = 800; // Define the width of the chart area
+            const height = 400; // Define the height of the chart area
     
             // Set up the scales
             const xScale = d3.scaleUtc().domain(d3.extent(chartData, d => d.time)).range([0, width]);
