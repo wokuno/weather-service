@@ -136,6 +136,8 @@ func submitDataHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	data.Timestamp = time.Now()
+
 	// Check if UUID is already assigned to the data
 	if data.ID == "" {
 		// Generate a new unique UUID
