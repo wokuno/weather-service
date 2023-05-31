@@ -6,7 +6,7 @@ services:
     privileged: true
     volumes:
       - /run/user/1000/podman/podman.sock:/tmp/docker.sock:Z  # Mount the Docker socket
-      - /srv/caddy-info:/data/caddy  # Mount a volume for certificate backup
+      - /srv/caddy-info:/etc/caddy  # Mount a volume for certificate backup
     ports:
       - "80:80"  # Expose port 80 for HTTP
       - "443:443"  # Expose port 443 for HTTPS
