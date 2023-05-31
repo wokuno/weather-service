@@ -33,11 +33,12 @@
             fetch('/data')
                 .then(response => response.json())
                 .then(data => {
+                    console.log(data);
                     document.getElementById('temperature').textContent = data.LatestData.Temperature;
                     document.getElementById('pressure').textContent = data.LatestData.Pressure;
 
                     // Update the chart
-                    // updateChart(data.HistoricalData, data.LatestData);
+                    updateChart(data.HistoricalData, data.LatestData);
                 });
         };
 
