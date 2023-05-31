@@ -60,48 +60,51 @@
         
         const ctx = document.getElementById('chart').getContext('2d');
         
-        if (window.chart) {
-            window.chart.destroy();
-        }
-        
-        window.chart = new Chart(ctx, {
+        if (!window.chart) {
+            window.chart = new Chart(ctx, {
             type: 'line',
             data: {
-            labels: chartLabels,
-            datasets: [{
+                labels: chartLabels,
+                datasets: [{
                 label: 'Temperature',
                 data: chartData,
                 borderColor: 'red',
                 fill: false
-            }]
+                }]
             },
             options: {
-            scales: {
+                scales: {
                 x: {
-                type: 'time',
-                time: {
+                    type: 'time',
+                    time: {
                     displayFormats: {
-                    second: 'HH:mm:ss',
-                    minute: 'HH:mm',
-                    hour: 'MMM D, HH:mm',
-                    day: 'MMM D',
-                    week: 'll',
-                    month: 'MMM YYYY',
-                    quarter: '[Q]Q - YYYY',
-                    year: 'YYYY'
+                        second: 'HH:mm:ss',
+                        minute: 'HH:mm',
+                        hour: 'MMM D, HH:mm',
+                        day: 'MMM D',
+                        week: 'll',
+                        month: 'MMM YYYY',
+                        quarter: '[Q]Q - YYYY',
+                        year: 'YYYY'
+                    }
+                    },
+                    ticks: {
+                    source: 'auto'
                     }
                 },
-                ticks: {
-                    source: 'auto'
-                }
-                },
                 y: {
-                beginAtZero: true
+                    beginAtZero: true
+                }
                 }
             }
-            }
-        });
+            });
+        } else {
+            window.chart.data.labels = chartLabels;
+            window.chart.data.datasets[0].data = chartData;
+            window.chart.update();
+        }
         };
+
 
 
         // Fetch initial data and update the chart
