@@ -71,6 +71,9 @@
             max: Math.max(maxTemperature, 90) // Maximum temperature (with upper bound of 90)
         };
 
+        const width = 500;
+        const height = 150;
+
         // Set up the scales
         const xScale = d3.scaleUtc().domain(d3.extent(chartData, d => d.time)).range([0, width]);
         const yScale = d3.scaleLinear().domain([temperatureRange.min, temperatureRange.max]).range([height, 0]);
