@@ -60,10 +60,29 @@ func main() {
 
 	// Start the HTTP server
 	log.Println("Server listening on port 8080...")
-	err = http.ListenAndServe(":8080", router)
+	err = http.ListenAndServe(":8080", addCORSHeaders(router))
 	if err != nil {
 		log.Fatal("Failed to start the server:", err)
 	}
+
+}
+
+func addCORSHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Add CORS headers
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+		// Handle pre-flight OPTIONS request
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		// Call the next handler
+		next.ServeHTTP(w, r)
+	})
 }
 
 // Home page handler
