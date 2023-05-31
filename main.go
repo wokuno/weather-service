@@ -21,6 +21,7 @@ import (
 // WeatherData represents the weather data structure
 type WeatherData struct {
 	ID          string    `json:"id"`
+	DeviceID    string    `json:"device_id"`
 	Temperature float64   `json:"temperature"`
 	Pressure    float64   `json:"pressure"`
 	Timestamp   time.Time `json:"timestamp"`
@@ -102,6 +103,7 @@ func dataHandler(w http.ResponseWriter, r *http.Request) {
 	// Parse the selected duration from the query parameters
 	duration, err := parseDurationFromQuery(r.URL.Query().Get("duration"))
 	if err != nil {
+		fmt.Println(err)
 		http.Error(w, "Invalid duration", http.StatusBadRequest)
 		return
 	}
@@ -112,6 +114,7 @@ func dataHandler(w http.ResponseWriter, r *http.Request) {
 	if limitStr != "" {
 		limit, err = strconv.Atoi(limitStr)
 		if err != nil {
+			fmt.Println(err)
 			http.Error(w, "Invalid limit value", http.StatusBadRequest)
 			return
 		}
@@ -142,13 +145,6 @@ func dataHandler(w http.ResponseWriter, r *http.Request) {
 		HistoricalData: historicalData,
 	}
 
-	// // Convert data to JSON
-	// jsonData, err := json.Marshal(data)
-	// if err != nil {
-	// 	http.Error(w, "Failed to marshal JSON data", http.StatusInternalServerError)
-	// 	return
-	// }
-
 	// Set response headers
 	w.Header().Set("Content-Type", "application/json")
 
@@ -175,22 +171,22 @@ func submitDataHandler(w http.ResponseWriter, r *http.Request) {
 	data.Timestamp = time.Now()
 	fmt.Println(data.Timestamp, data.Temperature, data.Pressure)
 
-	// Check if UUID is already assigned to the data
-	if data.ID == "" {
-		// Generate a new unique UUID
-		newUUID, err := generateUniqueUUID()
+	// Check if Device ID is provided
+	if data.DeviceID == "" {
+		// Generate a new unique Device ID
+		newDeviceID, err := generateUniqueDeviceID()
 		if err != nil {
 			fmt.Println(err)
-			http.Error(w, "Failed to generate UUID", http.StatusInternalServerError)
+			http.Error(w, "Failed to generate Device ID", http.StatusInternalServerError)
 			return
 		}
-		data.ID = newUUID
+		data.DeviceID = newDeviceID
 
-		// Send the new UUID as JSON response
+		// Send the new Device ID as JSON response
 		response := struct {
-			ID string `json:"id"`
+			DeviceID string `json:"id"`
 		}{
-			ID: newUUID,
+			DeviceID: newDeviceID,
 		}
 
 		// Convert response to JSON
@@ -211,24 +207,25 @@ func submitDataHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Failed to write JSON response", http.StatusInternalServerError)
 			return
 		}
+		return
 	}
 
 	// Insert the weather data into the database
 	err = insertWeatherData(data)
 	if err != nil {
-
+		fmt.Println(err)
 		http.Error(w, "Failed to insert weather data", http.StatusInternalServerError)
 		return
 	}
 
 	// Send a success response
-	//w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(http.StatusCreated)
 }
 
 // Fetch the latest weather data
 func getLatestWeatherData() (WeatherData, error) {
 	var data WeatherData
-	err := db.QueryRow(context.Background(), "SELECT id, temperature, pressure, timestamp FROM weather_data ORDER BY timestamp DESC LIMIT 1").Scan(&data.ID, &data.Temperature, &data.Pressure, &data.Timestamp)
+	err := db.QueryRow(context.Background(), "SELECT id, device_id, temperature, pressure, timestamp FROM weather_data ORDER BY timestamp DESC LIMIT 1").Scan(&data.ID, &data.DeviceID, &data.Temperature, &data.Pressure, &data.Timestamp)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return WeatherData{}, fmt.Errorf("no weather data available")
@@ -243,7 +240,7 @@ func getHistoricalWeatherData(duration time.Duration, limit int) ([]WeatherData,
 	// Calculate the start time based on the duration
 	startTime := time.Now().Add(-duration)
 
-	rows, err := db.Query(context.Background(), "SELECT id, temperature, pressure, timestamp FROM weather_data WHERE timestamp >= $1 ORDER BY timestamp ASC", startTime)
+	rows, err := db.Query(context.Background(), "SELECT id, device_id, temperature, pressure, timestamp FROM weather_data WHERE timestamp >= $1 ORDER BY timestamp ASC", startTime)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return []WeatherData{}, fmt.Errorf("no historical weather data available")
@@ -255,7 +252,7 @@ func getHistoricalWeatherData(duration time.Duration, limit int) ([]WeatherData,
 	var data []WeatherData
 	for rows.Next() {
 		var d WeatherData
-		err := rows.Scan(&d.ID, &d.Temperature, &d.Pressure, &d.Timestamp)
+		err := rows.Scan(&d.ID, &d.DeviceID, &d.Temperature, &d.Pressure, &d.Timestamp)
 		if err != nil {
 			return []WeatherData{}, fmt.Errorf("failed to fetch historical weather data row: %v", err)
 		}
@@ -289,7 +286,7 @@ func getHistoricalWeatherData(duration time.Duration, limit int) ([]WeatherData,
 
 // Insert weather data into the database
 func insertWeatherData(data WeatherData) error {
-	_, err := db.Exec(context.Background(), "INSERT INTO weather_data (id, temperature, pressure, timestamp) VALUES ($1, $2, $3, $4)", data.ID, data.Temperature, data.Pressure, data.Timestamp)
+	_, err := db.Exec(context.Background(), "INSERT INTO weather_data (device_id, temperature, pressure, timestamp) VALUES ($1, $2, $3, $4)", data.DeviceID, data.Temperature, data.Pressure, data.Timestamp)
 	if err != nil {
 		return fmt.Errorf("Failed to insert weather data into the database: %v", err)
 	}
@@ -300,7 +297,8 @@ func insertWeatherData(data WeatherData) error {
 func ensureTableExists() error {
 	_, err := db.Exec(context.Background(), `
 		CREATE TABLE IF NOT EXISTS weather_data (
-			id UUID PRIMARY KEY,
+			id SERIAL PRIMARY KEY,
+			device_id UUID,
 			temperature NUMERIC,
 			pressure NUMERIC,
 			timestamp TIMESTAMP
@@ -343,8 +341,8 @@ func parseDurationFromQuery(durationStr string) (time.Duration, error) {
 	}
 }
 
-// Generate a unique UUID that doesn't exist in the database
-func generateUniqueUUID() (string, error) {
+// Generate a unique Device ID that doesn't exist in the database
+func generateUniqueDeviceID() (string, error) {
 	for {
 		// Generate a new UUID
 		newUUID, err := uuid.NewV4()
@@ -352,19 +350,19 @@ func generateUniqueUUID() (string, error) {
 			return "", err
 		}
 
-		// Check if the UUID already exists in the database
-		if !uuidExists(newUUID.String()) {
+		// Check if the Device ID already exists in the database
+		if !deviceIDExists(newUUID.String()) {
 			return newUUID.String(), nil
 		}
 	}
 }
 
-// Check if the UUID exists in the database
-func uuidExists(id string) bool {
+// Check if the Device ID exists in the database
+func deviceIDExists(deviceID string) bool {
 	var exists bool
-	err := db.QueryRow(context.Background(), "SELECT EXISTS(SELECT 1 FROM weather_data WHERE id = $1)", id).Scan(&exists)
+	err := db.QueryRow(context.Background(), "SELECT EXISTS(SELECT 1 FROM weather_data WHERE device_id = $1)", deviceID).Scan(&exists)
 	if err != nil {
-		log.Printf("Failed to check UUID existence: %v", err)
+		log.Printf("Failed to check Device ID existence: %v", err)
 		return false
 	}
 	return exists
