@@ -21,7 +21,7 @@ import (
 // WeatherData represents the weather data structure
 type WeatherData struct {
 	ID          string    `json:"id"`
-	DeviceID    string    `json:"device_id"`
+	DeviceID    string    `json:"uuid"`
 	Temperature float64   `json:"temperature"`
 	Pressure    float64   `json:"pressure"`
 	Timestamp   time.Time `json:"timestamp"`
@@ -36,6 +36,19 @@ func main() {
 
 	// Create a new Mux router
 	router := mux.NewRouter()
+
+	// Connect to the PostgreSQL database
+	db, err := pgx.Connect(context.Background(), fmt.Sprintf("postgresql://weather:%s@postgres:5432/weatherdb?sslmode=disable", os.Getenv("POSTGRES_PASSWORD")))
+	if err != nil {
+		log.Fatal("Failed to connect to the database:", err)
+	}
+	defer db.Close(context.Background())
+
+	// Ensure the weather_data table exists
+	err = ensureTableExists(db)
+	if err != nil {
+		log.Fatal("Failed to ensure table exists:", err)
+	}
 
 	// Define routes
 	router.HandleFunc("/", homeHandler).Methods("GET")
@@ -213,7 +226,7 @@ func getLatestWeatherData() (WeatherData, error) {
 	defer conn.Close(context.Background())
 
 	var data WeatherData
-	err = conn.QueryRow(context.Background(), "SELECT id, device_id, temperature, pressure, timestamp FROM weather_data ORDER BY timestamp DESC LIMIT 1").Scan(&data.ID, &data.DeviceID, &data.Temperature, &data.Pressure, &data.Timestamp)
+	err = conn.QueryRow(context.Background(), "SELECT id, device_id, temperature, pressure, timestamp FROM weather_data ORDER BY id DESC LIMIT 1").Scan(&data.ID, &data.DeviceID, &data.Temperature, &data.Pressure, &data.Timestamp)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return WeatherData{}, fmt.Errorf("no weather data available")
@@ -289,6 +302,23 @@ func insertWeatherData(data WeatherData) error {
 	_, err = conn.Exec(context.Background(), "INSERT INTO weather_data (device_id, temperature, pressure, timestamp) VALUES ($1, $2, $3, $4)", data.DeviceID, data.Temperature, data.Pressure, data.Timestamp)
 	if err != nil {
 		return fmt.Errorf("Failed to insert weather data into the database: %v", err)
+	}
+	return nil
+}
+
+// Ensure the weather_data table exists
+func ensureTableExists(db *pgx.Conn) error {
+	_, err := db.Exec(context.Background(), `
+		CREATE TABLE IF NOT EXISTS weather_data (
+			id SERIAL PRIMARY KEY,
+			device_id UUID NOT NULL,
+			temperature FLOAT8 NOT NULL,
+			pressure FLOAT8 NOT NULL,
+			timestamp TIMESTAMPTZ NOT NULL
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create weather_data table: %v", err)
 	}
 	return nil
 }
