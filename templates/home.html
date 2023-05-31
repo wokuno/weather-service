@@ -2,7 +2,7 @@
 <html>
 <head>
     <title>Weather Dashboard</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://d3js.org/d3.v3.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
 </head>
 <body>
@@ -26,7 +26,7 @@
         <input type="submit" value="Update">
     </form>
 
-    <canvas id="chart"></canvas>
+    <div id="chart"></div>
 
     <script>
         // Function to update the latest weather data
@@ -34,7 +34,7 @@
             fetch('/data')
                 .then(response => response.json())
                 .then(data => {
-                    console.log(data);
+                    console.log(data.LatestData.Temperature);
                     document.getElementById('temperature').textContent = data.LatestData.Temperature;
                     document.getElementById('pressure').textContent = data.LatestData.Pressure;
 
@@ -44,68 +44,49 @@
         };
 
         const updateChart = (historicalData, latestData) => {
-        const chartData = [];
-        const chartLabels = [];
-        
-        const dateFormat = 'YYYY-MM-DD HH:mm:ss';
-        historicalData.forEach((data) => {
-            const timestamp = moment(data.Timestamp).utc().format(dateFormat);
-            chartData.push({ x: timestamp, y: data.Temperature });
-            chartLabels.push(timestamp);
-        });
-        
-        const latestTimestamp = moment(latestData.Timestamp).utc().format(dateFormat);
-        chartData.push({ x: latestTimestamp, y: latestData.Temperature });
-        chartLabels.push(latestTimestamp);
-        
-        const ctx = document.getElementById('chart').getContext('2d');
-        
-        if (!window.chart) {
-            window.chart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: chartLabels,
-                datasets: [{
-                label: 'Temperature',
-                data: chartData,
-                borderColor: 'red',
-                fill: false
-                }]
-            },
-            options: {
-                scales: {
-                x: {
-                    type: 'time',
-                    time: {
-                    displayFormats: {
-                        second: 'HH:mm:ss',
-                        minute: 'HH:mm',
-                        hour: 'MMM D, HH:mm',
-                        day: 'MMM D',
-                        week: 'll',
-                        month: 'MMM YYYY',
-                        quarter: '[Q]Q - YYYY',
-                        year: 'YYYY'
-                    }
-                    },
-                    ticks: {
-                    source: 'auto'
-                    }
-                },
-                y: {
-                    beginAtZero: true
-                }
-                }
-            }
+            const chartData = [];
+            const chartLabels = [];
+
+            const dateFormat = 'YYYY-MM-DD HH:mm:ss';
+            historicalData.forEach((data) => {
+                const timestamp = moment(data.Timestamp).utc().format(dateFormat);
+                chartData.push({ x: new Date(timestamp), y: data.Temperature });
+                chartLabels.push(timestamp);
             });
-        } else {
-            window.chart.data.labels = chartLabels;
-            window.chart.data.datasets[0].data = chartData;
-            window.chart.update();
-        }
+
+            const latestTimestamp = moment(latestData.Timestamp).utc().format(dateFormat);
+            chartData.push({ x: new Date(latestTimestamp), y: latestData.Temperature });
+            chartLabels.push(latestTimestamp);
+
+            const margin = { top: 20, right: 40, bottom: 30, left: 40 };
+            const width = 500 - margin.right - margin.left;
+            const height = 160 - margin.top - margin.bottom;
+
+            const xScale = d3.time.scale()
+                .domain(d3.extent(chartData, d => d.x))
+                .range([0, width]);
+
+            const yScale = d3.scale.linear()
+                .domain(d3.extent(chartData, d => d.y))
+                .range([height, 0]);
+
+            const line = d3.svg.line()
+                .x(d => xScale(d.x))
+                .y(d => yScale(d.y))
+                .interpolate("basis");
+
+            const svg = d3.select("#chart")
+                .append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+            svg.append("path")
+                .datum(chartData)
+                .attr("class", "line")
+                .attr("d", line);
         };
-
-
 
         // Fetch initial data and update the chart
         updateLatestData();

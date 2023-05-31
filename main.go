@@ -212,7 +212,7 @@ func submitDataHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Send a success response
-	w.WriteHeader(http.StatusCreated)
+	//w.WriteHeader(http.StatusCreated)
 }
 
 // Fetch the latest weather data
