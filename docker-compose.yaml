@@ -4,7 +4,7 @@ services:
     image: "wemakeservices/caddy-gen:latest"
     restart: always
     volumes:
-      - ${XDG_RUNTIME_DIR}/podman/podman.sock:/tmp/docker.sock:Z  # Mount the Docker socket
+      - /run/podman/podman.sock:/tmp/docker.sock:Z  # Mount the Docker socket
       - /srv/caddy-info:/data/caddy  # Mount a volume for certificate backup
     ports:
       - "80:80"  # Expose port 80 for HTTP
