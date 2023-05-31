@@ -2,14 +2,14 @@
 <html>
 <head>
     <title>Weather Dashboard</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
     <h1>Weather Dashboard</h1>
 
     <h2>Latest Weather Data</h2>
-    <p>Temperature: {{ .LatestData.Temperature }}</p>
-    <p>Pressure: {{ .LatestData.Pressure }}</p>
+    <p>Temperature: <span id="temperature"></span></p>
+    <p>Pressure: <span id="pressure"></span></p>
 
     <h2>Historical Weather Data</h2>
     <form method="GET" action="/">
@@ -25,70 +25,96 @@
         <input type="submit" value="Update">
     </form>
 
-    <canvas id="chart"></canvas>
+    <svg id="chart"></svg>
 
     <script>
-        // Parse duration from URL query parameter
-        const urlParams = new URLSearchParams(window.location.search);
-        const duration = urlParams.get('duration') || '1h';
-
-        // Set selected duration in the dropdown
-        const durationDropdown = document.getElementById('duration');
-        durationDropdown.value = duration;
-
-        // Fetch historical weather data based on the selected duration
-        fetch(`/data?duration=${duration}`)
-            .then(response => response.json())
-            .then(data => {
-                const timestamps = data.HistoricalData.map(d => d.Timestamp);
-                const temperatures = data.HistoricalData.map(d => d.Temperature);
-                const pressures = data.HistoricalData.map(d => d.Pressure);
-
-                const ctx = document.getElementById('chart').getContext('2d');
-                new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: timestamps,
-                        datasets: [
-                            {
-                                label: 'Temperature',
-                                data: temperatures,
-                                borderColor: 'red',
-                                fill: false
-                            },
-                            {
-                                label: 'Pressure',
-                                data: pressures,
-                                borderColor: 'blue',
-                                fill: false
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        scales: {
-                            x: {
-                                type: 'time',
-                                time: {
-                                    displayFormats: {
-                                        hour: 'MMM D, h:mm A'
-                                    }
-                                },
-                                title: {
-                                    display: true,
-                                    text: 'Timestamp'
-                                }
-                            },
-                            y: {
-                                title: {
-                                    display: true,
-                                    text: 'Value'
-                                }
-                            }
-                        }
-                    }
+        // Function to update the latest weather data
+        const updateLatestData = () => {
+            fetch('/latest')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('temperature').textContent = data.Temperature;
+                    document.getElementById('pressure').textContent = data.Pressure;
                 });
-            });
+        };
+
+        // Function to update the chart with new data
+        const updateChart = (data) => {
+            const timestamps = data.map(d => new Date(d.Timestamp));
+            const temperatures = data.map(d => d.Temperature);
+            const pressures = data.map(d => d.Pressure);
+
+            // Chart dimensions
+            const width = 800;
+            const height = 400;
+            const margin = { top: 20, right: 20, bottom: 40, left: 40 };
+
+            // Create x and y scales
+            const xScale = d3.scaleTime()
+                .domain(d3.extent(timestamps))
+                .range([margin.left, width - margin.right]);
+
+            const yScale = d3.scaleLinear()
+                .domain([d3.min(temperatures), d3.max(pressures)])
+                .range([height - margin.bottom, margin.top]);
+
+            // Create temperature line generator
+            const temperatureLine = d3.line()
+                .x((d, i) => xScale(timestamps[i]))
+                .y(d => yScale(d));
+
+            // Create pressure line generator
+            const pressureLine = d3.line()
+                .x((d, i) => xScale(timestamps[i]))
+                .y(d => yScale(d));
+
+            // Select the SVG chart element
+            const svg = d3.select('#chart');
+
+            // Update temperature line
+            svg.select('.temperature-line')
+                .datum(temperatures)
+                .attr('d', temperatureLine);
+
+            // Update pressure line
+            svg.select('.pressure-line')
+                .datum(pressures)
+                .attr('d', pressureLine);
+
+            // Shift the graph to remove the oldest sample
+            svg.selectAll('.dot')
+                .transition()
+                .duration(500)
+                .attr('cx', (d, i) => xScale(timestamps[i]))
+                .attr('cy', d => yScale(d));
+
+            svg.selectAll('.dot')
+                .data(pressures)
+                .exit()
+                .remove();
+        };
+
+        // Function to fetch historical weather data and update the chart
+        const fetchData = () => {
+            const durationDropdown = document.getElementById('duration');
+            const duration = durationDropdown.value;
+
+            fetch(`/data?duration=${duration}`)
+                .then(response => response.json())
+                .then(data => {
+                    updateChart(data.HistoricalData);
+                });
+        };
+
+        // Initial data fetch and chart rendering
+        fetchData();
+        updateLatestData();
+
+        // Update latest data and chart periodically
+        setInterval(() => {
+            updateLatestData();
+            fetchData();
+        }, 5000);
     </script>
 </body>
 </html>
