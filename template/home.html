@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Weather Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h1>Weather Dashboard</h1>
+
+    <h2>Latest Weather Data</h2>
+    <p>Temperature: {{ .LatestData.Temperature }}</p>
+    <p>Pressure: {{ .LatestData.Pressure }}</p>
+
+    <h2>Historical Weather Data</h2>
+    <form method="GET" action="/">
+        <label for="duration">Select Duration:</label>
+        <select name="duration" id="duration">
+            <option value="1h" {{ if eq .Duration "1h" }}selected{{ end }}>Past 1 Hour</option>
+            <option value="12h" {{ if eq .Duration "12h" }}selected{{ end }}>Past 12 Hours</option>
+            <option value="24h" {{ if eq .Duration "24h" }}selected{{ end }}>Past 24 Hours</option>
+            <option value="72h" {{ if eq .Duration "72h" }}selected{{ end }}>Past 3 Days</option>
+            <option value="120h" {{ if eq .Duration "120h" }}selected{{ end }}>Past 5 Days</option>
+            <option value="168h" {{ if eq .Duration "168h" }}selected{{ end }}>Past 1 Week</option>
+        </select>
+        <input type="submit" value="Update">
+    </form>
+
+    <canvas id="chart"></canvas>
+
+    <script>
+        // Parse duration from URL query parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const duration = urlParams.get('duration') || '1h';
+
+        // Set selected duration in the dropdown
+        const durationDropdown = document.getElementById('duration');
+        durationDropdown.value = duration;
+
+        // Fetch historical weather data based on the selected duration
+        fetch(`/data?duration=${duration}`)
+            .then(response => response.json())
+            .then(data => {
+                const timestamps = data.HistoricalData.map(d => d.Timestamp);
+                const temperatures = data.HistoricalData.map(d => d.Temperature);
+                const pressures = data.HistoricalData.map(d => d.Pressure);
+
+                const ctx = document.getElementById('chart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: timestamps,
+                        datasets: [
+                            {
+                                label: 'Temperature',
+                                data: temperatures,
+                                borderColor: 'red',
+                                fill: false
+                            },
+                            {
+                                label: 'Pressure',
+                                data: pressures,
+                                borderColor: 'blue',
+                                fill: false
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    displayFormats: {
+                                        hour: 'MMM D, h:mm A'
+                                    }
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Timestamp'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Value'
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+    </script>
+</body>
+</html>

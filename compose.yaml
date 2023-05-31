@@ -1,0 +1,38 @@
+version: "3"
+services:
+  caddy-gen:
+    container_name: caddy-gen
+    image: "wemakeservices/caddy-gen:latest"
+    restart: always
+    volumes:
+      - /var/run:/var/run:ro
+      - ./caddy-info:/data/caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - go-service
+
+  go-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: go-service-image
+    labels:
+      - "virtual.host=weather.wokuno.com"
+      - "virtual.port=8080"
+      - "virtual.tls-email=admin@weather.wokuno.com"
+
+  postgres:
+    container_name: postgres
+    image: postgres:latest
+    restart: always
+    environment:
+      - POSTGRES_USER=weather
+      - POSTGRES_PASSWORD=geU4Sh67maJr7fHW7DE
+      - POSTGRES_DB=weatherdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    command: ["postgres", "-c", "shared_preload_libraries=uuid-ossp"]
