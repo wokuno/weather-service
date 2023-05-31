@@ -247,14 +247,14 @@ func ensureTableExists() error {
 
 // Parse duration from query parameters
 func parseDurationFromQuery(queryParams map[string][]string) (time.Duration, error) {
-	durationStr := queryParams.Get("duration")
+	durationStr := queryParams["duration"][0]
 	if durationStr == "" {
 		return time.Hour, nil // Default duration to 1 hour if not specified
 	}
 
 	durationInt, err := strconv.Atoi(durationStr)
 	if err != nil {
-		return 0, fmt.Errorf("Invalid duration value: %v", err)
+		return 0, fmt.Errorf("invalid duration value: %v", err)
 	}
 
 	switch durationInt {
@@ -271,7 +271,7 @@ func parseDurationFromQuery(queryParams map[string][]string) (time.Duration, err
 	case 168:
 		return 7 * 24 * time.Hour, nil
 	default:
-		return 0, fmt.Errorf("Invalid duration value: %d", durationInt)
+		return 0, fmt.Errorf("invalid duration value: %d", durationInt)
 	}
 }
 

@@ -4,8 +4,8 @@ services:
     image: "wemakeservices/caddy-gen:latest"
     restart: always
     volumes:
-      - /var/run/docker.sock:/tmp/docker.sock:ro  # Mount the Docker socket
-      - ./caddy-info:/data/caddy  # Mount a volume for certificate backup
+      - ${XDG_RUNTIME_DIR}/podman/podman.sock:/tmp/docker.sock:Z  # Mount the Docker socket
+      - /srv/caddy-info:/data/caddy  # Mount a volume for certificate backup
     ports:
       - "80:80"  # Expose port 80 for HTTP
       - "443:443"  # Expose port 443 for HTTPS
@@ -13,9 +13,6 @@ services:
       - weather-service
 
   weather-service:
-    build:
-      context: .
-      dockerfile: Dockerfile
     image: weather-service:latest  # Updated image name
     labels:
       - "virtual.host=weather.wokuno.com"  # Updated domain
@@ -38,5 +35,5 @@ services:
     ports:
       - "5432:5432"  # Expose port 5432 for PostgreSQL
     volumes:
-      - ./pgdata:/var/lib/postgresql/data  # Mount a volume for persistent data storage
+      - /srv/pgdata:/var/lib/postgresql/data  # Mount a volume for persistent data storage
     command: ["postgres", "-c", "shared_preload_libraries=uuid-ossp"]  # Enable uuid-ossp extension
