@@ -60,49 +60,81 @@
             temperature: (data.temperature * 9/5) + 32 // Convert temperature from Celsius to Fahrenheit
         }));
 
-        // Check if any temperatures are outside the provided range
-        const temperatures = chartData.map(data => data.temperature);
-        const minTemperature = Math.min(...temperatures);
-        const maxTemperature = Math.max(...temperatures);
+        // Check if the SVG element exists
+        let svg = d3.select("#chart").select("svg");
 
-        // Update the temperature range
-        const temperatureRange = {
-            min: Math.min(minTemperature, -30), // Minimum temperature (with lower bound of -30)
-            max: Math.max(maxTemperature, 90) // Maximum temperature (with upper bound of 90)
-        };
-
-        const width = 500;
-        const height = 150;
-
-        // Set up the scales
-        const xScale = d3.scaleUtc().domain(d3.extent(chartData, d => d.time)).range([0, width]);
-        const yScale = d3.scaleLinear().domain([temperatureRange.min, temperatureRange.max]).range([height, 0]);
+        if (svg.empty()) {
+            // Create the SVG element if it doesn't exist
+            svg = d3.select("#chart").append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+            
+            // Append the necessary elements inside the SVG
+            svg.append("defs").append("linearGradient")
+            .attr("id", "temperatureGradient")
+            .attr("gradientUnits", "userSpaceOnUse")
+            .attr("x1", 0).attr("y1", yScale(90))
+            .attr("x2", 0).attr("y2", yScale(-30))
+            .selectAll("stop")
+            .data([
+                { offset: "0%", color: "#0000FF" }, // Blue
+                { offset: "50%", color: "#00FF00" }, // Green
+                { offset: "100%", color: "#FF0000" } // Red
+            ])
+            .enter().append("stop")
+            .attr("offset", d => d.offset)
+            .attr("stop-color", d => d.color);
+            
+            svg.append("g")
+            .attr("class", "x-axis")
+            .attr("transform", "translate(0," + height + ")")
+            .call(d3.axisBottom(xScale));
+        
+            svg.append("g")
+            .attr("class", "y-axis")
+            .call(d3.axisLeft(yScale));
+        }
 
         // Set up the line generator
         const line = d3.line()
             .x(d => xScale(d.time))
             .y(d => yScale(d.temperature));
 
-        // Select the existing SVG element and update its contents
-        const svg = d3.select("#chart").select("svg");
-        
-        // Update the path
-        svg.select("path")
-            .datum(chartData)
-            .attr("d", line);
+        // Update the temperature range
+        const temperatures = chartData.map(data => data.temperature);
+        const minTemperature = Math.min(...temperatures, -30);
+        const maxTemperature = Math.max(...temperatures, 90);
+        const temperatureRange = [minTemperature, maxTemperature];
 
-        // Update the color scale
-        svg.select("linearGradient")
-            .select("stop:first-child")
-            .attr("offset", `${100 * (temperatureRange.min + 30) / (90 + 30)}%`); // Update the offset of the first stop
+        // Update the scales
+        xScale.domain(d3.extent(chartData, d => d.time));
+        yScale.domain(temperatureRange);
 
-        // Update the y-axis scale
-        yScale.domain([temperatureRange.min, temperatureRange.max]);
+        // Update the axis and line
+        svg.select(".x-axis")
+            .transition()
+            .call(d3.axisBottom(xScale));
 
-        // Update the y-axis
         svg.select(".y-axis")
             .transition()
             .call(d3.axisLeft(yScale));
+
+        // Update or create the path
+        let path = svg.select(".line");
+
+        if (path.empty()) {
+            path = svg.append("path")
+            .attr("class", "line")
+            .attr("fill", "none")
+            .attr("stroke", "url(#temperatureGradient)")
+            .attr("stroke-width", 2);
+        }
+
+        path.datum(chartData)
+            .transition()
+            .attr("d", line);
         };
 
     
