@@ -30,19 +30,30 @@
     <script>
         // Function to update the latest weather data
         const updateLatestData = () => {
-            fetch('/latest')
+            fetch('/data')
                 .then(response => response.json())
                 .then(data => {
-                    document.getElementById('temperature').textContent = data.Temperature;
-                    document.getElementById('pressure').textContent = data.Pressure;
+                    document.getElementById('temperature').textContent = data.LatestData.Temperature;
+                    document.getElementById('pressure').textContent = data.LatestData.Pressure;
+
+                    // Update the chart
+                    updateChart(data.HistoricalData, data.LatestData);
                 });
         };
 
         // Function to update the chart with new data
-        const updateChart = (data) => {
-            const timestamps = data.map(d => new Date(d.Timestamp));
-            const temperatures = data.map(d => d.Temperature);
-            const pressures = data.map(d => d.Pressure);
+        const updateChart = (historicalData, latestData) => {
+            // Remove the oldest data point from the historical data
+            historicalData.shift();
+
+            const timestamps = historicalData.map(d => new Date(d.Timestamp));
+            const temperatures = historicalData.map(d => d.Temperature);
+            const pressures = historicalData.map(d => d.Pressure);
+
+            // Add the latest data point to the end of the arrays
+            timestamps.push(new Date(latestData.Timestamp));
+            temperatures.push(latestData.Temperature);
+            pressures.push(latestData.Pressure);
 
             // Chart dimensions
             const width = 800;
@@ -61,59 +72,71 @@
             // Create temperature line generator
             const temperatureLine = d3.line()
                 .x((d, i) => xScale(timestamps[i]))
-                .y(d => yScale(d));
+                .y(d => yScale(d))
+                .curve(d3.curveMonotoneX);
 
             // Create pressure line generator
             const pressureLine = d3.line()
                 .x((d, i) => xScale(timestamps[i]))
-                .y(d => yScale(d));
+                .y(d => yScale(d))
+                .curve(d3.curveMonotoneX);
 
-            // Select the SVG chart element
-            const svg = d3.select('#chart');
+            // Select the chart SVG element
+            const svg = d3.select('#chart')
+                .attr('width', width)
+                .attr('height', height);
 
-            // Update temperature line
-            svg.select('.temperature-line')
+            // Remove the previous chart elements
+            svg.selectAll('.line').remove();
+            svg.selectAll('.dot').remove();
+
+            // Append temperature line
+            svg.append('path')
                 .datum(temperatures)
-                .attr('d', temperatureLine);
+                .attr('class', 'line temperature-line')
+                .attr('d', temperatureLine)
+                .attr('fill', 'none')
+                .attr('stroke', 'red')
+                .attr('stroke-width', 2);
 
-            // Update pressure line
-            svg.select('.pressure-line')
+            // Append pressure line
+            svg.append('path')
                 .datum(pressures)
-                .attr('d', pressureLine);
+                .attr('class', 'line pressure-line')
+                .attr('d', pressureLine)
+                .attr('fill', 'none')
+                .attr('stroke', 'blue')
+                .attr('stroke-width', 2);
 
-            // Shift the graph to remove the oldest sample
+            // Append temperature dots
             svg.selectAll('.dot')
-                .transition()
-                .duration(500)
+                .data(temperatures)
+                .enter()
+                .append('circle')
+                .attr('class', 'dot temperature-dot')
                 .attr('cx', (d, i) => xScale(timestamps[i]))
-                .attr('cy', d => yScale(d));
+                .attr('cy', d => yScale(d))
+                .attr('r', 3)
+                .attr('fill', 'red');
 
+            // Append pressure dots
             svg.selectAll('.dot')
                 .data(pressures)
-                .exit()
-                .remove();
+                .enter()
+                .append('circle')
+                .attr('class', 'dot pressure-dot')
+                .attr('cx', (d, i) => xScale(timestamps[i]))
+                .attr('cy', d => yScale(d))
+                .attr('r', 3)
+                .attr('fill', 'blue');
         };
 
-        // Function to fetch historical weather data and update the chart
-        const fetchData = () => {
-            const durationDropdown = document.getElementById('duration');
-            const duration = durationDropdown.value;
-
-            fetch(`/data?duration=${duration}`)
-                .then(response => response.json())
-                .then(data => {
-                    updateChart(data.HistoricalData);
-                });
-        };
-
-        // Initial data fetch and chart rendering
-        fetchData();
+        // Fetch initial data and update the chart
         updateLatestData();
 
         // Update latest data and chart periodically
         setInterval(() => {
             updateLatestData();
-            fetchData();
         }, 5000);
     </script>
 </body>
