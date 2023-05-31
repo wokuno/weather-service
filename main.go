@@ -270,15 +270,15 @@ func ensureTableExists() error {
 
 // Parse duration from query parameters
 func parseDurationFromQuery(queryParams map[string][]string) (time.Duration, error) {
-	durationStr := queryParams["duration"][0]
-	if durationStr == "" {
+	durationStr, ok := queryParams["duration"]
+	if !ok || len(durationStr) == 0 {
 		return time.Hour, nil // Default duration to 1 hour if not specified
 	}
 
-	// Remove "h" suffix if present
-	durationStr = strings.TrimSuffix(durationStr, "h")
+	durationValue := durationStr[0]
+	durationVal := strings.TrimSuffix(durationValue, "h")
 
-	durationInt, err := strconv.Atoi(durationStr)
+	durationInt, err := strconv.Atoi(durationVal)
 	if err != nil {
 		return 0, fmt.Errorf("invalid duration value: %v", err)
 	}
