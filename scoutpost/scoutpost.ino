@@ -9,8 +9,8 @@
 #include <ArduinoJson.h> // Include the ArduinoJson library
 
 // Replace with your network credentials
-char ssid[32] = "";
-char password[64] = "";
+char ssid[32] = "2023 HGTV Smart Home";
+char password[64] = "021c9f868a";
 
 // Server URL to send sensor data
 const char* serverUrl = "weather.wokuno.com";

@@ -54,8 +54,8 @@
         const updateChart = (historicalData, latestData) => {
             // Prepare the data
             const chartData = historicalData.concat([latestData]).map(data => ({
-                time: new Date(data.Timestamp),
-                temperature: data.Temperature
+                time: new Date(data.timestamp),
+                temperature: data.temperature
             }));
 
             // Set up the scales
