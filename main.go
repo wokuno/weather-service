@@ -168,6 +168,7 @@ func submitDataHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data.Timestamp = time.Now()
+	fmt.Println(data.Timestampdata.Temperature, data.Pressure)
 
 	// Check if UUID is already assigned to the data
 	if data.ID == "" {
