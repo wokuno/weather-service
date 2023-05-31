@@ -132,8 +132,8 @@ func dataHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Combine the latest and historical data
 	data := struct {
-		LatestData     WeatherData
-		HistoricalData []WeatherData
+		LatestData     WeatherData   `json:"LatestData"`
+		HistoricalData []WeatherData `json:"HistoricalData"`
 	}{
 		LatestData:     latestData,
 		HistoricalData: historicalData,
