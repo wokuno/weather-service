@@ -91,6 +91,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 	// Render the home template
 	err := templates.ExecuteTemplate(w, "home.html", nil)
 	if err != nil {
+		fmt.Println(err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -119,6 +120,7 @@ func dataHandler(w http.ResponseWriter, r *http.Request) {
 	// Fetch the latest weather data
 	latestData, err := getLatestWeatherData()
 	if err != nil {
+		fmt.Println(err)
 		http.Error(w, "Failed to fetch weather data", http.StatusInternalServerError)
 		return
 	}
@@ -126,6 +128,7 @@ func dataHandler(w http.ResponseWriter, r *http.Request) {
 	// Fetch historical weather data within the selected duration and limited number of data points
 	historicalData, err := getHistoricalWeatherData(duration, limit)
 	if err != nil {
+		fmt.Println(err)
 		http.Error(w, "Failed to fetch historical weather data", http.StatusInternalServerError)
 		return
 	}
@@ -152,6 +155,7 @@ func dataHandler(w http.ResponseWriter, r *http.Request) {
 	// Write the JSON data to the response
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
+		fmt.Println(err)
 		http.Error(w, "Failed to write JSON response", http.StatusInternalServerError)
 		return
 	}
@@ -163,6 +167,7 @@ func submitDataHandler(w http.ResponseWriter, r *http.Request) {
 	var data WeatherData
 	err := json.NewDecoder(r.Body).Decode(&data)
 	if err != nil {
+		fmt.Println(err)
 		http.Error(w, "Failed to parse request body", http.StatusBadRequest)
 		return
 	}
@@ -175,6 +180,7 @@ func submitDataHandler(w http.ResponseWriter, r *http.Request) {
 		// Generate a new unique UUID
 		newUUID, err := generateUniqueUUID()
 		if err != nil {
+			fmt.Println(err)
 			http.Error(w, "Failed to generate UUID", http.StatusInternalServerError)
 			return
 		}
@@ -190,6 +196,7 @@ func submitDataHandler(w http.ResponseWriter, r *http.Request) {
 		// Convert response to JSON
 		jsonResponse, err := json.Marshal(response)
 		if err != nil {
+			fmt.Println(err)
 			http.Error(w, "Failed to marshal JSON response", http.StatusInternalServerError)
 			return
 		}
@@ -200,6 +207,7 @@ func submitDataHandler(w http.ResponseWriter, r *http.Request) {
 		// Write the JSON response to the client
 		_, err = w.Write(jsonResponse)
 		if err != nil {
+			fmt.Println(err)
 			http.Error(w, "Failed to write JSON response", http.StatusInternalServerError)
 			return
 		}
@@ -208,6 +216,7 @@ func submitDataHandler(w http.ResponseWriter, r *http.Request) {
 	// Insert the weather data into the database
 	err = insertWeatherData(data)
 	if err != nil {
+
 		http.Error(w, "Failed to insert weather data", http.StatusInternalServerError)
 		return
 	}

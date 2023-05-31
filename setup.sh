@@ -28,6 +28,14 @@ sudo dnf install -y podman-compose
 mkdir -p /srv/caddy
 mkdir -p /srv/pgdata
 
+# Change ownership of the directories
+chown -R weather:weather /srv/caddy
+chown -R weather:weather /srv/pgdata
+
+# Change Permissions of the directories
+chmod 755 /srv/caddy
+chmod 700 /srv/pgdata
+
 # Clone the GitHub repository
 git clone https://github.com/wokuno/weather-service /tmp/weather-service
 
@@ -40,15 +48,10 @@ cp /tmp/weather-service/Caddyfile /srv/
 cp /tmp/weather-service/docker-compose.yaml /srv/
 cp /tmp/weather-service/Dockerfile /srv/
 
-# Change ownership of the directories
-chown -R weather:weather /srv/caddy
-chown -R weather:weather /srv/pgdata
-
 # Set the environment variables
 echo "export POSTGRES_USER=weather" >> /home/weather/.bashrc
 echo "export POSTGRES_PASSWORD=$POSTGRES_PASSWORD" >> /home/weather/.bashrc
 echo "export POSTGRES_DB=weatherdb" >> /home/weather/.bashrc
 
 # Start the containers using Podman Compose
-cd /srv
 sudo -u weather podman-compose up -d
