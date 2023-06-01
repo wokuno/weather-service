@@ -128,10 +128,17 @@ func dataHandler(db *pgx.Conn) http.HandlerFunc {
 			}
 		}
 
+		latestData, err := getLatestWeatherData(db)
+		if err != nil {
+			fmt.Println(err)
+			http.Error(w, "Failed to fetch latest weather data", http.StatusInternalServerError)
+			return
+		}
+
 		// Return the data as JSON
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"CurrentData":    WeatherData{}, // replace with actual current weather data fetching
+			"LatestData":     latestData,
 			"HistoricalData": historicalData,
 		})
 	}
@@ -218,6 +225,21 @@ func getHistoricalWeatherData(db *pgx.Conn, duration time.Duration, limit int) (
 	}
 
 	return data, nil
+}
+
+func getLatestWeatherData(db *pgx.Conn) (WeatherData, error) {
+	row := db.QueryRow(context.Background(), `SELECT id, device_id, temperature, pressure, timestamp FROM weather_data ORDER BY timestamp DESC LIMIT 1`)
+
+	var d WeatherData
+	err := row.Scan(&d.ID, &d.DeviceID, &d.Temperature, &d.Pressure, &d.Timestamp)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return WeatherData{}, fmt.Errorf("no latest weather data found")
+		}
+		return WeatherData{}, err
+	}
+
+	return d, nil
 }
 
 // parseDurationFromQuery parses the duration from a string and returns a time.Duration value
