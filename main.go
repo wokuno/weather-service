@@ -38,22 +38,29 @@ func main() {
 	router := mux.NewRouter()
 
 	// Connect to the PostgreSQL database
-	db, err := pgx.Connect(context.Background(), fmt.Sprintf("postgresql://weather:%s@postgres:5432/weatherdb?sslmode=disable", os.Getenv("POSTGRES_PASSWORD")))
+	dbr, err := pgx.Connect(context.Background(), fmt.Sprintf("postgresql://weather:%s@postgres:5432/weatherdb?sslmode=disable", os.Getenv("POSTGRES_PASSWORD")))
+	if err != nil {
+		log.Fatal("Failed to connect to the database:", err)
+	}
+	defer db.Close(context.Background())
+
+	// Connect to the PostgreSQL database
+	dbw, err := pgx.Connect(context.Background(), fmt.Sprintf("postgresql://weather:%s@postgres:5432/weatherdb?sslmode=disable", os.Getenv("POSTGRES_PASSWORD")))
 	if err != nil {
 		log.Fatal("Failed to connect to the database:", err)
 	}
 	defer db.Close(context.Background())
 
 	// Ensure the weather_data table exists
-	err = ensureTableExists(db)
+	err = ensureTableExists(dbr)
 	if err != nil {
 		log.Fatal("Failed to ensure table exists:", err)
 	}
 
 	// Define routes
 	router.HandleFunc("/", homeHandler).Methods("GET")
-	router.HandleFunc("/data", dataHandler(db)).Methods("GET") // Pass the db connection to handler
-	router.HandleFunc("/data", submitDataHandler(db)).Methods("POST")
+	router.HandleFunc("/data", dataHandler(dbw)).Methods("GET") // Pass the db connection to handler
+	router.HandleFunc("/data", submitDataHandler(dbw)).Methods("POST")
 
 	// Start the HTTP server
 	log.Println("Server listening on port 8080...")
@@ -272,10 +279,14 @@ func getHistoricalWeatherData(db *pgx.Conn, duration time.Duration, limit int) (
 }
 
 func getLatestWeatherData(db *pgx.Conn) (WeatherData, error) {
-	row := db.QueryRow(context.Background(), `SELECT id, device_id, temperature, pressure, timestamp FROM weather_data ORDER BY id DESC LIMIT 1`)
+	row, err := db.Query(context.Background(), `SELECT id, device_id, temperature, pressure, timestamp FROM weather_data WHERE timestamp >= $1 ORDER BY timestamp`, startTime)
+	if err != nil {
+		return WeatherData{}, err
+	}
+	defer row.Close()
 
 	var d WeatherData
-	err := row.Scan(&d.ID, &d.DeviceID, &d.Temperature, &d.Pressure, &d.Timestamp)
+	err = row.Scan(&d.ID, &d.DeviceID, &d.Temperature, &d.Pressure, &d.Timestamp)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return WeatherData{}, fmt.Errorf("no latest weather data found")
