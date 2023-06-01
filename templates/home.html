@@ -54,11 +54,16 @@
         }
     
         const updateChart = (historicalData, latestData) => {
-        // Prepare the data
-        const chartData = historicalData.concat([latestData]).map(data => ({
-            time: new Date(data.timestamp),
-            temperature: (data.temperature * 9/5) + 32 // Convert temperature from Celsius to Fahrenheit
-        }));
+
+        const chartData = historicalData || []; // Use an empty array if historicalData is null or undefined
+
+        chartData.push(latestData); // Add the latest data to the chartData array
+
+        // Convert temperature from Celsius to Fahrenheit
+        chartData.forEach(data => {
+        data.time = new Date(data.timestamp);
+        data.temperature = (data.temperature * 9/5) + 32;
+        });
 
         // Check if the SVG element exists
         let svg = d3.select("#chart").select("svg");
