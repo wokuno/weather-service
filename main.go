@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -218,23 +220,22 @@ func getHistoricalWeatherData(db *pgx.Conn, duration time.Duration, limit int) (
 	return data, nil
 }
 
-// Parse a duration from a string
-func parseDurationFromQuery(query string) (time.Duration, error) {
-	// Default to 24 hours if the query is empty
-	if query == "" {
-		return 24 * time.Hour, nil
+// parseDurationFromQuery parses the duration from a string and returns a time.Duration value
+func parseDurationFromQuery(durationStr string) (time.Duration, error) {
+	if durationStr == "" {
+		return time.Hour, nil // default duration is 1 hour
 	}
 
-	// Parse the duration
-	duration, err := time.ParseDuration(query)
+	// If durationStr ends with 'h', remove it
+	if strings.HasSuffix(durationStr, "h") {
+		durationStr = durationStr[:len(durationStr)-1]
+	}
+
+	// Convert durationStr to integer
+	durationInt, err := strconv.Atoi(durationStr)
 	if err != nil {
-		return 0, err
+		return 0, errors.New("Invalid duration")
 	}
 
-	// Ensure the duration is positive
-	if duration < 0 {
-		return 0, fmt.Errorf("duration must be positive")
-	}
-
-	return duration, nil
+	return time.Duration(durationInt) * time.Hour, nil
 }
