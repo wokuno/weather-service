@@ -250,8 +250,10 @@ func getHistoricalWeatherData(duration time.Duration, limit int) ([]WeatherData,
 	rows, err := conn.Query(context.Background(), "SELECT id, device_id, temperature, pressure, timestamp FROM weather_data WHERE timestamp >= $1 ORDER BY id ASC", startTime)
 	if err != nil {
 		if err == sql.ErrNoRows {
+			fmt.Println(err)
 			return []WeatherData{}, fmt.Errorf("no historical weather data available")
 		}
+		fmt.Println(err)
 		return []WeatherData{}, fmt.Errorf("failed to fetch historical weather data: %v", err)
 	}
 	defer rows.Close()
