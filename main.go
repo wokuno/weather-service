@@ -140,6 +140,7 @@ func dataHandler(db *pgx.Conn) http.HandlerFunc {
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"LatestData":     latestData,
 			"HistoricalData": historicalData,
+			"Duration":       duration,
 		})
 	}
 }
