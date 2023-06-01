@@ -39,6 +39,7 @@
 
     <script>
         // Function to update the latest weather data
+       // Function to update the latest weather data
         async function updateLatestData() {
             await fetch('/data')
                 .then(response => response.json())
@@ -47,141 +48,107 @@
                     const roundedTemperature = temperature.toFixed(1); // Limit number of digits to 1 decimal place
                     document.getElementById('temperature').textContent = `${roundedTemperature}°F`;
                     document.getElementById('pressure').textContent = data.LatestData.pressure;
-    
+
                     // Update the chart
                     updateChart(data.HistoricalData, data.LatestData);
                 });
         }
-    
-        const updateChart = (historicalData, latestData) => {
 
-        const chartData = historicalData || []; // Use an empty array if historicalData is null or undefined
+        // Margin, width and height for the chart
+        const margin = { top: 20, right: 20, bottom: 30, left: 50 };
+        const width = 960 - margin.left - margin.right;
+        const height = 500 - margin.top - margin.bottom;
 
-        chartData.push(latestData); // Add the latest data to the chartData array
-
-        // Convert temperature from Celsius to Fahrenheit
-        chartData.forEach(data => {
-        data.time = new Date(data.timestamp);
-        data.temperature = (data.temperature * 9/5) + 32;
-        });
-
-        // Check if the SVG element exists
-        let svg = d3.select("#chart").select("svg");
-
-        if (svg.empty()) {
-            // Create the SVG element if it doesn't exist
-            svg = d3.select("#chart").append("svg")
-            .attr("width", width + margin.left + margin.right)
-            .attr("height", height + margin.top + margin.bottom)
-            .append("g")
-            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-            
-            // Append the necessary elements inside the SVG
-            svg.append("defs").append("linearGradient")
-            .attr("id", "temperatureGradient")
-            .attr("gradientUnits", "userSpaceOnUse")
-            .attr("x1", 0).attr("y1", yScale(90))
-            .attr("x2", 0).attr("y2", yScale(-30))
-            .selectAll("stop")
-            .data([
-                { offset: "0%", color: "#0000FF" }, // Blue
-                { offset: "50%", color: "#00FF00" }, // Green
-                { offset: "100%", color: "#FF0000" } // Red
-            ])
-            .enter().append("stop")
-            .attr("offset", d => d.offset)
-            .attr("stop-color", d => d.color);
-            
-            svg.append("g")
-            .attr("class", "x-axis")
-            .attr("transform", "translate(0," + height + ")")
-            .call(d3.axisBottom(xScale));
-        
-            svg.append("g")
-            .attr("class", "y-axis")
-            .call(d3.axisLeft(yScale));
-        }
-
-        // Set up the scales
+        // Set up the scales and line generator
         const xScale = d3.scaleTime().range([0, width]);
         const yScale = d3.scaleLinear().range([height, 0]);
+        const line = d3.line().x(d => xScale(d.time)).y(d => yScale(d.temperature));
 
-        // Set up the line generator
-        const line = d3.line()
-            .x(d => xScale(d.time))
-            .y(d => yScale(d.temperature));
+        const updateChart = (historicalData, latestData) => {
 
-        // Update the temperature range
-        const temperatures = chartData.map(data => data.temperature);
-        const minTemperature = Math.min(...temperatures, -30);
-        const maxTemperature = Math.max(...temperatures, 90);
-        const temperatureRange = [minTemperature, maxTemperature];
+            const chartData = historicalData || []; // Use an empty array if historicalData is null or undefined
+            chartData.push(latestData); // Add the latest data to the chartData array
 
-        // Update the scales' domains
-        xScale.domain(d3.extent(chartData, d => d.time));
-        yScale.domain(temperatureRange);
+            // Convert temperature from Celsius to Fahrenheit
+            chartData.forEach(data => {
+                data.time = new Date(data.timestamp);
+                data.temperature = (data.temperature * 9/5) + 32;
+            });
 
-        // Update the axis and line
-        svg.select(".x-axis")
-            .transition()
-            .call(d3.axisBottom(xScale));
+            // Check if the SVG element exists
+            let svg = d3.select("#chart").select("svg");
 
-        svg.select(".y-axis")
-            .transition()
-            .call(d3.axisLeft(yScale));
+            if (svg.empty()) {
+                // Create the SVG element if it doesn't exist
+                svg = d3.select("#chart").append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+                
+                // Append the necessary elements inside the SVG
+                svg.append("defs").append("linearGradient")
+                .attr("id", "temperatureGradient")
+                .attr("gradientUnits", "userSpaceOnUse")
+                .attr("x1", 0).attr("y1", yScale(90))
+                .attr("x2", 0).attr("y2", yScale(-30))
+                .selectAll("stop")
+                .data([
+                    { offset: "0%", color: "#0000FF" }, // Blue
+                    { offset: "50%", color: "#00FF00" }, // Green
+                    { offset: "100%", color: "#FF0000" } // Red
+                ])
+                .enter().append("stop")
+                .attr("offset", d => d.offset)
+                .attr("stop-color", d => d.color);
+                
+                svg.append("g")
+                .attr("class", "x-axis")
+                .attr("transform", "translate(0," + height + ")")
+                .call(d3.axisBottom(xScale));
+            
+                svg.append("g")
+                .attr("class", "y-axis")
+                .call(d3.axisLeft(yScale));
+            }
 
-        // Update or create the path
-        let path = svg.select(".line");
+            // Update the scales' domains
+            xScale.domain(d3.extent(chartData, d => d.time));
+            yScale.domain([Math.min(...chartData.map(data => data.temperature)), Math.max(...chartData.map(data => data.temperature))]);
 
-        if (path.empty()) {
-            path = svg.append("path")
-            .attr("class", "line")
-            .attr("fill", "none")
-            .attr("stroke", "url(#temperatureGradient)")
-            .attr("stroke-width", 2);
-        }
+            // Update the axis and line
+            svg.select(".x-axis")
+                .transition()
+                .call(d3.axisBottom(xScale));
 
-        // Update the path's data and 'd' attribute
-        path.datum(chartData)
-            .transition()
-            .attr("d", line);
+            svg.select(".y-axis")
+                .transition()
+                .call(d3.axisLeft(yScale));
+
+            // Update or create the path
+            let path = svg.select(".line");
+
+            if (path.empty()) {
+                path = svg.append("path")
+                .attr("class", "line")
+                .attr("fill", "none")
+                .attr("stroke", "url(#temperatureGradient)")
+                .attr("stroke-width", 2);
+            }
+
+            // Update the path's data and 'd' attribute
+            path.datum(chartData)
+                .transition()
+                .attr("d", line);
         };
 
-
-    
         // Fetch initial data and update the chart
         updateLatestData();
-    
+
         // Update latest data and chart periodically
         setInterval(() => {
             updateLatestData();
         }, 5000);
     </script>
-    
-    <script>
-        // Gradient colors
-        var mainRectGradient = d3.select("body")
-          .select("svg")
-          .select("defs")
-          .append("linearGradient")
-          .attr("id", "mainRectGradient")
-          .attr("x1", "0%")
-          .attr("y1", "0%")
-          .attr("x2", "0%")
-          .attr("y2", "100%");
-
-        mainRectGradient.append("stop")
-          .attr("offset", "0%")
-          .attr("stop-color", "red");
-
-        mainRectGradient.append("stop")
-          .attr("offset", "50%")
-          .attr("stop-color", "green");
-
-        mainRectGradient.append("stop")
-          .attr("offset", "100%")
-          .attr("stop-color", "blue");
-    </script>
-    
 </body>
 </html>

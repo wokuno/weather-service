@@ -266,7 +266,6 @@ func getHistoricalWeatherData(duration time.Duration, limit int) ([]WeatherData,
 		if err != nil {
 			return []WeatherData{}, fmt.Errorf("failed to fetch historical weather data row: %v", err)
 		}
-		fmt.Println(d)
 		data = append(data, d)
 	}
 
@@ -291,7 +290,6 @@ func getHistoricalWeatherData(duration time.Duration, limit int) ([]WeatherData,
 
 		return limitedData, nil
 	}
-	fmt.Println(data)
 
 	return data, nil
 }
