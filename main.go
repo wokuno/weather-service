@@ -290,7 +290,7 @@ func insertWeatherData(db *pgx.Conn, data WeatherData) error {
 	// Execute the insert statement
 	_, err := db.Exec(context.Background(), `
 		INSERT INTO weather_data (device_id, temperature, pressure, timestamp)
-		VALUES ($2, $3, $4, $5)`,
+		VALUES ($1, $2, $3, $4)`,
 		data.DeviceID, data.Temperature, data.Pressure, data.Timestamp)
 	if err != nil {
 		return fmt.Errorf("failed to insert weather data: %v", err)
