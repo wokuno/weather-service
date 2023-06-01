@@ -53,7 +53,7 @@ func main() {
 	// Define routes
 	router.HandleFunc("/", homeHandler).Methods("GET")
 	router.HandleFunc("/data", dataHandler(db)).Methods("GET") // Pass the db connection to handler
-	router.HandleFunc("/data", submitDataHandler).Methods("POST")
+	router.HandleFunc("/data", submitDataHandler(db)).Methods("POST")
 
 	// Start the HTTP server
 	log.Println("Server listening on port 8080...")
@@ -145,68 +145,70 @@ func dataHandler(db *pgx.Conn) http.HandlerFunc {
 }
 
 // Submit data handler
-func submitDataHandler(w http.ResponseWriter, r *http.Request) {
-	// Parse the request body into a WeatherData struct
-	var data WeatherData
-	err := json.NewDecoder(r.Body).Decode(&data)
-	if err != nil {
-		fmt.Println(err)
-		http.Error(w, "Failed to parse request body", http.StatusBadRequest)
-		return
-	}
-
-	data.Timestamp = time.Now()
-	fmt.Println(data.Timestamp, data.Temperature, data.Pressure)
-
-	// Check if Device ID is provided
-	if data.DeviceID == "" {
-		// Generate a new unique Device ID
-		newDeviceID, err := generateUniqueDeviceID()
+func submitDataHandler(db *pgx.Conn) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Parse the request body into a WeatherData struct
+		var data WeatherData
+		err := json.NewDecoder(r.Body).Decode(&data)
 		if err != nil {
 			fmt.Println(err)
-			http.Error(w, "Failed to generate Device ID", http.StatusInternalServerError)
-			return
-		}
-		data.DeviceID = newDeviceID
-
-		// Send the new Device ID as JSON response
-		response := struct {
-			DeviceID string `json:"id"`
-		}{
-			DeviceID: newDeviceID,
-		}
-
-		// Convert response to JSON
-		jsonResponse, err := json.Marshal(response)
-		if err != nil {
-			fmt.Println(err)
-			http.Error(w, "Failed to marshal JSON response", http.StatusInternalServerError)
+			http.Error(w, "Failed to parse request body", http.StatusBadRequest)
 			return
 		}
 
-		// Set response headers
-		w.Header().Set("Content-Type", "application/json")
+		data.Timestamp = time.Now()
+		fmt.Println(data.Timestamp, data.Temperature, data.Pressure)
 
-		// Write the JSON response to the client
-		_, err = w.Write(jsonResponse)
-		if err != nil {
-			fmt.Println(err)
-			http.Error(w, "Failed to write JSON response", http.StatusInternalServerError)
+		// Check if Device ID is provided
+		if data.DeviceID == "" {
+			// Generate a new unique Device ID
+			newDeviceID, err := generateUniqueDeviceID(db)
+			if err != nil {
+				fmt.Println(err)
+				http.Error(w, "Failed to generate Device ID", http.StatusInternalServerError)
+				return
+			}
+			data.DeviceID = newDeviceID
+
+			// Send the new Device ID as JSON response
+			response := struct {
+				DeviceID string `json:"id"`
+			}{
+				DeviceID: newDeviceID,
+			}
+
+			// Convert response to JSON
+			jsonResponse, err := json.Marshal(response)
+			if err != nil {
+				fmt.Println(err)
+				http.Error(w, "Failed to marshal JSON response", http.StatusInternalServerError)
+				return
+			}
+
+			// Set response headers
+			w.Header().Set("Content-Type", "application/json")
+
+			// Write the JSON response to the client
+			_, err = w.Write(jsonResponse)
+			if err != nil {
+				fmt.Println(err)
+				http.Error(w, "Failed to write JSON response", http.StatusInternalServerError)
+				return
+			}
 			return
 		}
-		return
-	}
 
-	// Insert the weather data into the database
-	err = insertWeatherData(db, data)
-	if err != nil {
-		fmt.Println(err)
-		http.Error(w, "Failed to insert weather data", http.StatusInternalServerError)
-		return
-	}
+		// Insert the weather data into the database
+		err = insertWeatherData(db, data)
+		if err != nil {
+			fmt.Println(err)
+			http.Error(w, "Failed to insert weather data", http.StatusInternalServerError)
+			return
+		}
 
-	// Send a success response
-	w.WriteHeader(http.StatusCreated)
+		// Send a success response
+		w.WriteHeader(http.StatusCreated)
+	}
 }
 
 // Ensure the weather_data table exists
