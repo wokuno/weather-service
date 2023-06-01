@@ -228,7 +228,7 @@ func getHistoricalWeatherData(db *pgx.Conn, duration time.Duration, limit int) (
 }
 
 func getLatestWeatherData(db *pgx.Conn) (WeatherData, error) {
-	row := db.QueryRow(context.Background(), `SELECT id, device_id, temperature, pressure, timestamp FROM weather_data ORDER BY timestamp DESC LIMIT 1`)
+	row := db.QueryRow(context.Background(), `SELECT id, device_id, temperature, pressure, timestamp FROM weather_data ORDER BY id DESC LIMIT 1`)
 
 	var d WeatherData
 	err := row.Scan(&d.ID, &d.DeviceID, &d.Temperature, &d.Pressure, &d.Timestamp)
