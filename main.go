@@ -146,25 +146,66 @@ func dataHandler(db *pgx.Conn) http.HandlerFunc {
 
 // Submit data handler
 func submitDataHandler(w http.ResponseWriter, r *http.Request) {
-	// Read the request body
-	body := r.Body
-	defer body.Close()
-
-	// Decode the JSON request body into a new WeatherData
+	// Parse the request body into a WeatherData struct
 	var data WeatherData
-	err := json.NewDecoder(body).Decode(&data)
+	err := json.NewDecoder(r.Body).Decode(&data)
 	if err != nil {
 		fmt.Println(err)
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		http.Error(w, "Failed to parse request body", http.StatusBadRequest)
 		return
 	}
 
-	// Generate a new UUID for the data
-	data.ID = uuid.Must(uuid.NewV4()).String()
+	data.Timestamp = time.Now()
+	fmt.Println(data.Timestamp, data.Temperature, data.Pressure)
 
-	// Save the data to the database
+	// Check if Device ID is provided
+	if data.DeviceID == "" {
+		// Generate a new unique Device ID
+		newDeviceID, err := generateUniqueDeviceID()
+		if err != nil {
+			fmt.Println(err)
+			http.Error(w, "Failed to generate Device ID", http.StatusInternalServerError)
+			return
+		}
+		data.DeviceID = newDeviceID
 
-	// Send a 201 Created response
+		// Send the new Device ID as JSON response
+		response := struct {
+			DeviceID string `json:"id"`
+		}{
+			DeviceID: newDeviceID,
+		}
+
+		// Convert response to JSON
+		jsonResponse, err := json.Marshal(response)
+		if err != nil {
+			fmt.Println(err)
+			http.Error(w, "Failed to marshal JSON response", http.StatusInternalServerError)
+			return
+		}
+
+		// Set response headers
+		w.Header().Set("Content-Type", "application/json")
+
+		// Write the JSON response to the client
+		_, err = w.Write(jsonResponse)
+		if err != nil {
+			fmt.Println(err)
+			http.Error(w, "Failed to write JSON response", http.StatusInternalServerError)
+			return
+		}
+		return
+	}
+
+	// Insert the weather data into the database
+	err = insertWeatherData(db, data)
+	if err != nil {
+		fmt.Println(err)
+		http.Error(w, "Failed to insert weather data", http.StatusInternalServerError)
+		return
+	}
+
+	// Send a success response
 	w.WriteHeader(http.StatusCreated)
 }
 
@@ -240,6 +281,47 @@ func getLatestWeatherData(db *pgx.Conn) (WeatherData, error) {
 	}
 
 	return d, nil
+}
+
+// Insert weather data into the database
+func insertWeatherData(db *pgx.Conn, data WeatherData) error {
+	// Execute the insert statement
+	_, err := db.Exec(context.Background(), `
+		INSERT INTO weather_data (device_id, temperature, pressure, timestamp)
+		VALUES ($2, $3, $4, $5)`,
+		data.DeviceID, data.Temperature, data.Pressure, data.Timestamp)
+	if err != nil {
+		return fmt.Errorf("failed to insert weather data: %v", err)
+	}
+
+	return nil
+}
+
+// Generate a unique Device ID that doesn't exist in the database
+func generateUniqueDeviceID(db *pgx.Conn) (string, error) {
+	for {
+		// Generate a new UUID
+		newUUID, err := uuid.NewV4()
+		if err != nil {
+			return "", fmt.Errorf("failed to generate Device ID: %v", err)
+		}
+
+		// Check if the Device ID already exists in the database
+		if !deviceIDExists(db, newUUID.String()) {
+			return newUUID.String(), nil
+		}
+	}
+}
+
+// Check if the Device ID exists in the database
+func deviceIDExists(db *pgx.Conn, deviceID string) bool {
+	var exists bool
+	err := db.QueryRow(context.Background(), "SELECT EXISTS(SELECT 1 FROM weather_data WHERE device_id = $1)", deviceID).Scan(&exists)
+	if err != nil {
+		log.Printf("Failed to check Device ID existence: %v", err)
+		return false
+	}
+	return exists
 }
 
 // parseDurationFromQuery parses the duration from a string and returns a time.Duration value
