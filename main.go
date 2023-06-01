@@ -243,6 +243,7 @@ func getHistoricalWeatherData(duration time.Duration, limit int) ([]WeatherData,
 
 	conn, err := pgx.Connect(context.Background(), fmt.Sprintf("postgresql://weather:%s@postgres:5432/weatherdb?sslmode=disable", os.Getenv("POSTGRES_PASSWORD")))
 	if err != nil {
+		fmt.Println(err)
 		return []WeatherData{}, fmt.Errorf("Failed to connect to the database: %v", err)
 	}
 	defer conn.Close(context.Background())
@@ -289,6 +290,7 @@ func getHistoricalWeatherData(duration time.Duration, limit int) ([]WeatherData,
 
 		return limitedData, nil
 	}
+	fmt.Println(data)
 
 	return data, nil
 }
